@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-regression-diff-v0.1.schema.json",
+  "title": "AO Sentinel Regression Diff v0.1",
+  "type": "object",
+  "required": ["schema_version", "status", "baseline_id", "run_id", "case_results", "blockers", "summary"],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.regression-diff.v0.1" },
+    "status": { "enum": ["passed", "failed", "blocked"] },
+    "blockers": { "type": "array" }
+  },
+  "additionalProperties": true
+}

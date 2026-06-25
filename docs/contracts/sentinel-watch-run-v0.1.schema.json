@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-watch-run-v0.1.schema.json",
+  "title": "AO Sentinel Watch Run v0.1",
+  "type": "object",
+  "required": ["schema_version", "status", "target_id", "iterations", "cycles", "mutates_live_state", "background_service_started"],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.watch-run.v0.1" },
+    "status": { "const": "dry_run_complete" },
+    "mutates_live_state": { "const": false },
+    "background_service_started": { "const": false }
+  },
+  "additionalProperties": true
+}

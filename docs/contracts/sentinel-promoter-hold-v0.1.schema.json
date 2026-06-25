@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-promoter-hold-v0.1.schema.json",
+  "title": "AO Sentinel Promoter Hold v0.1",
+  "type": "object",
+  "required": ["schema_version", "hold_id", "target_id", "hold_required", "verdict", "blockers", "mutates_live_state"],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.promoter-hold.v0.1" },
+    "hold_required": { "type": "boolean" },
+    "mutates_live_state": { "const": false }
+  },
+  "additionalProperties": true
+}

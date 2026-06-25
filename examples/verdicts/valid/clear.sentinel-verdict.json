@@ -1,0 +1,14 @@
+{
+  "schema_version": "ao.sentinel.verdict.v0.1",
+  "verdict": "clear",
+  "target_id": "local-ao-stack",
+  "baseline_id": "ao-stack-baseline",
+  "safety_status": "passed",
+  "regression_status": "passed",
+  "blockers": [],
+  "recommended_actions": [],
+  "promoter_hold_required": false,
+  "rollback_recommended": false,
+  "mutates_live_state": false,
+  "evaluated_at_utc": "2026-06-25T00:00:00Z"
+}

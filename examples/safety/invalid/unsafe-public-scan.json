@@ -1,0 +1,17 @@
+{
+  "schema_version": "ao.sentinel.safety-scan.v0.1",
+  "status": "failed",
+  "path": "README.md",
+  "findings_count": 1,
+  "findings": [
+    {
+      "detector": "redacted_fixture",
+      "file": "README.md",
+      "line": 1,
+      "severity": "critical",
+      "summary": "unsafe public content was detected without exposing the matched value"
+    }
+  ],
+  "scanned_at_utc": "2026-06-25T00:00:00Z",
+  "mutates_live_state": false
+}

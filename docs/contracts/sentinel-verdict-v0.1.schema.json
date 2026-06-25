@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-verdict-v0.1.schema.json",
+  "title": "AO Sentinel Verdict v0.1",
+  "type": "object",
+  "required": ["schema_version", "verdict", "target_id", "baseline_id", "safety_status", "regression_status", "blockers", "recommended_actions", "promoter_hold_required", "rollback_recommended", "mutates_live_state"],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.verdict.v0.1" },
+    "verdict": { "enum": ["clear", "hold", "incident"] },
+    "mutates_live_state": { "const": false }
+  },
+  "additionalProperties": true
+}

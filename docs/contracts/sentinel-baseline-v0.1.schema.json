@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-baseline-v0.1.schema.json",
+  "title": "AO Sentinel Baseline v0.1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "baseline_id",
+    "target_id",
+    "created_at_utc",
+    "expires_at_utc",
+    "expected_safety_status",
+    "regression_expectations",
+    "performance_budgets",
+    "contract_fingerprints",
+    "approval_authority"
+  ],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.baseline.v0.1" },
+    "baseline_id": { "type": "string", "minLength": 1 },
+    "target_id": { "type": "string", "minLength": 1 },
+    "created_at_utc": { "type": "string" },
+    "expires_at_utc": { "type": "string" },
+    "expected_safety_status": { "enum": ["passed", "failed"] },
+    "regression_expectations": { "type": "array" },
+    "performance_budgets": { "type": "object" },
+    "contract_fingerprints": { "type": "object" },
+    "approval_authority": { "type": "string" }
+  },
+  "additionalProperties": true
+}

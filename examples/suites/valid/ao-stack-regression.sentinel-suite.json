@@ -1,0 +1,25 @@
+{
+  "schema_version": "ao.sentinel.regression-suite.v0.1",
+  "suite_id": "ao-stack-regression",
+  "target_id": "local-ao-stack",
+  "default_timeout_seconds": 5,
+  "dry_run_only": true,
+  "cases": [
+    {
+      "case_id": "help_lists_commands",
+      "command": "fixture://pass/sentinel help output",
+      "expected_status": "passed",
+      "expected_output_contains": "sentinel",
+      "max_duration_ms": 1000,
+      "severity_on_failure": "high"
+    },
+    {
+      "case_id": "report_contract_marker",
+      "command": "fixture://pass/report rendering available",
+      "expected_status": "passed",
+      "expected_output_contains": "report",
+      "max_duration_ms": 1000,
+      "severity_on_failure": "medium"
+    }
+  ]
+}

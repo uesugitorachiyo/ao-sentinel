@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-incident-v0.1.schema.json",
+  "title": "AO Sentinel Incident v0.1",
+  "type": "object",
+  "required": ["schema_version", "incident_id", "target_id", "incident_required", "promoter_hold_required", "rollback_recommended", "mutates_live_state"],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.incident.v0.1" },
+    "incident_required": { "type": "boolean" },
+    "mutates_live_state": { "const": false }
+  },
+  "additionalProperties": true
+}

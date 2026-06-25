@@ -1,0 +1,22 @@
+{
+  "schema_version": "ao.sentinel.verdict.v0.1",
+  "verdict": "incident",
+  "target_id": "local-ao-stack",
+  "baseline_id": "ao-stack-baseline",
+  "safety_status": "failed",
+  "regression_status": "passed",
+  "blockers": [
+    {
+      "blocker_id": "public_safety_failed",
+      "severity": "critical",
+      "reason": "public safety scan failed",
+      "source": "safety",
+      "recommended_action": "remove unsafe public content"
+    }
+  ],
+  "recommended_actions": ["remove unsafe public content"],
+  "promoter_hold_required": false,
+  "rollback_recommended": true,
+  "mutates_live_state": false,
+  "evaluated_at_utc": "2026-06-25T00:00:00Z"
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-regression-run-v0.1.schema.json",
+  "title": "AO Sentinel Regression Run v0.1",
+  "type": "object",
+  "required": ["schema_version", "run_id", "suite_id", "target_id", "status", "case_results", "summary", "mutates_live_state"],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.regression-run.v0.1" },
+    "status": { "enum": ["passed", "failed"] },
+    "mutates_live_state": { "const": false }
+  },
+  "additionalProperties": true
+}

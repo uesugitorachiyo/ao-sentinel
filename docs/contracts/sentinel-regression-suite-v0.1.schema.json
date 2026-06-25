@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-regression-suite-v0.1.schema.json",
+  "title": "AO Sentinel Regression Suite v0.1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite_id",
+    "target_id",
+    "cases",
+    "default_timeout_seconds",
+    "dry_run_only"
+  ],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.regression-suite.v0.1" },
+    "suite_id": { "type": "string" },
+    "target_id": { "type": "string" },
+    "cases": { "type": "array" },
+    "default_timeout_seconds": { "type": "integer" },
+    "dry_run_only": { "const": true }
+  },
+  "additionalProperties": true
+}

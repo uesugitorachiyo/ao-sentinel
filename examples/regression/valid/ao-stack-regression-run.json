@@ -1,0 +1,38 @@
+{
+  "schema_version": "ao.sentinel.regression-run.v0.1",
+  "run_id": "run-ao-stack-regression",
+  "suite_id": "ao-stack-regression",
+  "target_id": "local-ao-stack",
+  "status": "passed",
+  "case_results": [
+    {
+      "case_id": "help_lists_commands",
+      "status": "passed",
+      "expected_status": "passed",
+      "output": "sentinel help output",
+      "expected_output_contains": "sentinel",
+      "duration_ms": 10,
+      "max_duration_ms": 1000,
+      "passed": true,
+      "severity_on_failure": "high"
+    },
+    {
+      "case_id": "report_contract_marker",
+      "status": "passed",
+      "expected_status": "passed",
+      "output": "report rendering available",
+      "expected_output_contains": "report",
+      "duration_ms": 10,
+      "max_duration_ms": 1000,
+      "passed": true,
+      "severity_on_failure": "medium"
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "failed": 0,
+    "total_duration_ms": 20
+  },
+  "mutates_live_state": false,
+  "ran_at_utc": "2026-06-25T00:00:00Z"
+}

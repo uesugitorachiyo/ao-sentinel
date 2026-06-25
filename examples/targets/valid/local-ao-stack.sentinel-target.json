@@ -1,0 +1,14 @@
+{
+  "schema_version": "ao.sentinel.target.v0.1",
+  "target_id": "local-ao-stack",
+  "target_kind": "active_stack",
+  "active_stack_ref": "examples/active/local-stack.json",
+  "watch_scope": ["README.md", "docs", "examples"],
+  "watched_components": ["ao-foundry", "ao-promoter", "ao-covenant"],
+  "platform_matrix": ["ubuntu-latest", "macos-latest", "windows-latest"],
+  "risk_budget": {
+    "max_critical_findings": 0,
+    "max_regression_failures": 0
+  },
+  "dry_run_only": true
+}

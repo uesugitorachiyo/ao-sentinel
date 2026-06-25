@@ -1,0 +1,9 @@
+{
+  "schema_version": "ao.sentinel.safety-scan.v0.1",
+  "status": "passed",
+  "path": "README.md",
+  "findings_count": 0,
+  "findings": [],
+  "scanned_at_utc": "2026-06-25T00:00:00Z",
+  "mutates_live_state": false
+}

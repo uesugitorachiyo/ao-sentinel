@@ -1,0 +1,32 @@
+{
+  "schema_version": "ao.sentinel.baseline.v0.1",
+  "baseline_id": "ao-stack-baseline",
+  "target_id": "local-ao-stack",
+  "created_at_utc": "2026-06-25T00:00:00Z",
+  "expires_at_utc": "2999-01-01T00:00:00Z",
+  "expected_safety_status": "passed",
+  "regression_expectations": [
+    {
+      "case_id": "help_lists_commands",
+      "expected_status": "passed",
+      "expected_output_contains": "sentinel",
+      "max_duration_ms": 1000
+    },
+    {
+      "case_id": "report_contract_marker",
+      "expected_status": "passed",
+      "expected_output_contains": "report",
+      "max_duration_ms": 1000
+    }
+  ],
+  "performance_budgets": {
+    "max_total_duration_ms": 2000,
+    "allowed_failure_count": 0,
+    "schema_drift_allowed": false
+  },
+  "contract_fingerprints": {
+    "sentinel-target-v0.1": "fixture",
+    "sentinel-verdict-v0.1": "fixture"
+  },
+  "approval_authority": "fixture"
+}

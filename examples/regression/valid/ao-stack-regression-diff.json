@@ -1,0 +1,24 @@
+{
+  "schema_version": "ao.sentinel.regression-diff.v0.1",
+  "status": "passed",
+  "baseline_id": "ao-stack-baseline",
+  "run_id": "run-ao-stack-regression",
+  "target_id": "local-ao-stack",
+  "case_results": [
+    {
+      "case_id": "help_lists_commands",
+      "status": "passed",
+      "passed": true
+    },
+    {
+      "case_id": "report_contract_marker",
+      "status": "passed",
+      "passed": true
+    }
+  ],
+  "blockers": [],
+  "summary": {
+    "failed": 0,
+    "total": 2
+  }
+}

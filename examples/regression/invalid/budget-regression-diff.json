@@ -1,0 +1,27 @@
+{
+  "schema_version": "ao.sentinel.regression-diff.v0.1",
+  "status": "failed",
+  "baseline_id": "ao-stack-baseline",
+  "run_id": "run-ao-stack-regression",
+  "target_id": "local-ao-stack",
+  "case_results": [
+    {
+      "case_id": "help_lists_commands",
+      "status": "passed",
+      "passed": false
+    }
+  ],
+  "blockers": [
+    {
+      "blocker_id": "regression_budget_help_lists_commands",
+      "severity": "high",
+      "reason": "case duration budget exceeded",
+      "source": "help_lists_commands",
+      "recommended_action": "investigate performance regression"
+    }
+  ],
+  "summary": {
+    "failed": 1,
+    "total": 1
+  }
+}
