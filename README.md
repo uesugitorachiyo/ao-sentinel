@@ -48,3 +48,7 @@ git diff --check
 AO2 SDD planner artifacts can be written under `target/` during local
 automation runs. The directory is not part of the public release surface
 because runspecs may include local machine paths.
+
+## License
+
+AO Sentinel is licensed under `Apache-2.0`. See `LICENSE`.
