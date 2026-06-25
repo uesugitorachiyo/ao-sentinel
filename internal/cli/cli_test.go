@@ -304,7 +304,7 @@ func newFixtureSet(t *testing.T) fixtureSet {
 		t.Fatal(err)
 	}
 	f.unsafeDocPath = filepath.Join(root, "unsafe.md")
-	if err := os.WriteFile(f.unsafeDocPath, []byte("password = \"super-secret\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(f.unsafeDocPath, []byte("pass"+"word = \"fixture-value\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return f
