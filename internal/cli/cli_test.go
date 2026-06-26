@@ -14,7 +14,7 @@ func TestHelpListsExpectedCommandsAndUnknownCommandFails(t *testing.T) {
 	if code := Run([]string{"--help"}, &out, &err); code != 0 {
 		t.Fatalf("help exit code = %d stderr = %s", code, err.String())
 	}
-	for _, want := range []string{"target", "baseline", "safety", "run", "compare", "monitor", "incident", "hold", "report", "watch"} {
+	for _, want := range []string{"target", "baseline", "safety", "run", "compare", "monitor", "incident", "hold", "report", "watch", "triage"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("help output missing %q:\n%s", want, out.String())
 		}
@@ -24,6 +24,50 @@ func TestHelpListsExpectedCommandsAndUnknownCommandFails(t *testing.T) {
 	err.Reset()
 	if code := Run([]string{"definitely-not-a-command"}, &out, &err); code == 0 {
 		t.Fatalf("unknown command succeeded: stdout=%s stderr=%s", out.String(), err.String())
+	}
+}
+
+func TestCITriageEmitsRepairPacket(t *testing.T) {
+	f := newFixtureSet(t)
+	signal := map[string]any{
+		"schema_version":  "ao.sentinel.ci-signal.v0.1",
+		"signal_id":       "ci-ao-forge-123",
+		"source":          "github-actions",
+		"repository":      "ao-forge",
+		"workflow":        "test",
+		"job":             "go-test",
+		"conclusion":      "failure",
+		"log_excerpt":     "go test ./... failed: schema validation failed for goal-run-context-handoff-v0.1",
+		"observed_at_utc": "2026-06-26T12:00:00Z",
+	}
+	signalPath := f.writeJSON("ci-signal.json", signal)
+	outPath := filepath.Join(f.tmp, "ci-triage.json")
+
+	assertRunOK(t, []string{"triage", "ci", "--signal", signalPath, "--out", outPath})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.ci-triage.v0.1" ||
+		packet["status"] != "repair_required" ||
+		packet["root_cause"] != "contract_schema" ||
+		packet["mutates_live_state"] != false ||
+		packet["regression_test_required"] != true {
+		t.Fatalf("unexpected CI triage packet: %#v", packet)
+	}
+	nextTask, ok := packet["next_forge_task"].(map[string]any)
+	if !ok || !strings.Contains(nextTask["title"].(string), "Fix contract schema failure") {
+		t.Fatalf("triage packet missing Forge next task: %#v", packet["next_forge_task"])
+	}
+	steps := packet["triage_steps"].([]any)
+	if len(steps) != 5 {
+		t.Fatalf("expected five triage steps, got %#v", steps)
+	}
+
+	staleSignal := cloneMap(t, signal)
+	staleSignal["conclusion"] = "success"
+	staleOut := filepath.Join(f.tmp, "ci-triage-success.json")
+	assertRunOK(t, []string{"triage", "ci", "--signal", f.writeJSON("ci-success.json", staleSignal), "--out", staleOut})
+	observed := readMap(t, staleOut)
+	if observed["status"] != "observed" || observed["regression_test_required"] != false {
+		t.Fatalf("successful signal should not require repair: %#v", observed)
 	}
 }
 
@@ -206,6 +250,7 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 
 	assertRunOK(t, []string{"target", "validate", "--target", filepath.Join(root, "examples/targets/valid/local-ao-stack.sentinel-target.json")})
 	assertRunOK(t, []string{"baseline", "validate", "--baseline", filepath.Join(root, "examples/baselines/valid/ao-stack.sentinel-baseline.json")})
+	assertRunOK(t, []string{"triage", "ci", "--signal", filepath.Join(root, "examples/triage/ci-contract-schema.sentinel-ci-signal.json"), "--out", filepath.Join(root, "tmp/checked-in-ci-triage.json")})
 
 	cases := []struct {
 		name    string

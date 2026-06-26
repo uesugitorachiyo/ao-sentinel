@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uesugitorachiyo/ao-sentinel/docs/contracts/sentinel-ci-triage-v0.1.schema.json",
+  "title": "AO Sentinel CI Triage v0.1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "signal_id",
+    "source",
+    "repository",
+    "workflow",
+    "job",
+    "severity",
+    "root_cause",
+    "recommended_action",
+    "regression_test_required",
+    "triage_steps",
+    "next_forge_task",
+    "mutates_live_state",
+    "generated_at_utc",
+    "observed_signal_timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ao.sentinel.ci-triage.v0.1"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["observed", "repair_required"]
+    },
+    "signal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job": {
+      "type": "string",
+      "minLength": 1
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "medium", "high", "critical"]
+    },
+    "root_cause": {
+      "type": "string",
+      "enum": ["none", "contract_schema", "timeout", "public_safety", "flaky_test", "ci_failure"]
+    },
+    "recommended_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "regression_test_required": {
+      "type": "boolean"
+    },
+    "triage_steps": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "string",
+        "enum": [
+          "capture_signal",
+          "localize_failure_boundary",
+          "reproduce_or_simulate",
+          "implement_targeted_repair",
+          "verify_regression_gate"
+        ]
+      }
+    },
+    "next_forge_task": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "mutates_live_state": {
+      "const": false
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_signal_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

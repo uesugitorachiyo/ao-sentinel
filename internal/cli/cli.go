@@ -53,6 +53,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		err = runReport(args[1:], stdout)
 	case "watch":
 		err = runWatch(args[1:], stdout)
+	case "triage":
+		err = runTriage(args[1:], stdout)
 	default:
 		err = fmt.Errorf("unknown command %q", args[0])
 	}
@@ -77,8 +79,9 @@ Usage:
   sentinel hold emit --verdict <json> --out <json>
   sentinel report render --verdict <json> --incident <json> --out <markdown>
   sentinel watch dry-run --target <json> --suite <json> --baseline <json> --iterations <n> --out <json>
+  sentinel triage ci --signal <json> --out <json>
 
-Commands: target baseline safety run compare monitor incident hold report watch`)
+Commands: target baseline safety run compare monitor incident hold report watch triage`)
 }
 
 func runTarget(args []string, stdout io.Writer) error {
@@ -460,6 +463,124 @@ func runWatch(args []string, stdout io.Writer) error {
 	}
 	fmt.Fprintln(stdout, "watch dry-run: complete")
 	return nil
+}
+
+func runTriage(args []string, stdout io.Writer) error {
+	if len(args) == 0 || args[0] != "ci" {
+		return errors.New("triage command requires ci")
+	}
+	signalPath, err := flagValue(args[1:], "--signal")
+	if err != nil {
+		return err
+	}
+	out, err := flagValue(args[1:], "--out")
+	if err != nil {
+		return err
+	}
+	if err := requireTmpOutput(out); err != nil {
+		return err
+	}
+	signal, err := readJSONMap(signalPath)
+	if err != nil {
+		return err
+	}
+	packet, err := triageCISignal(signal)
+	if err != nil {
+		return err
+	}
+	if err := writeJSON(out, packet); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "ci triage: %s root_cause=%s\n", packet["status"], packet["root_cause"])
+	return nil
+}
+
+func triageCISignal(signal map[string]any) (map[string]any, error) {
+	if stringField(signal, "schema_version") != "ao.sentinel.ci-signal.v0.1" {
+		return nil, errors.New("unknown CI signal schema_version")
+	}
+	for _, field := range []string{"signal_id", "source", "repository", "workflow", "job", "conclusion", "observed_at_utc"} {
+		if stringField(signal, field) == "" {
+			return nil, fmt.Errorf("CI signal missing required field %s", field)
+		}
+	}
+	conclusion := strings.ToLower(stringField(signal, "conclusion"))
+	if conclusion == "success" || conclusion == "passed" {
+		return map[string]any{
+			"schema_version":            "ao.sentinel.ci-triage.v0.1",
+			"status":                    "observed",
+			"signal_id":                 stringField(signal, "signal_id"),
+			"source":                    stringField(signal, "source"),
+			"repository":                stringField(signal, "repository"),
+			"workflow":                  stringField(signal, "workflow"),
+			"job":                       stringField(signal, "job"),
+			"severity":                  "info",
+			"root_cause":                "none",
+			"recommended_action":        "No repair required; retain signal as passing observability evidence.",
+			"regression_test_required":  false,
+			"triage_steps":              ciTriageSteps(),
+			"next_forge_task":           map[string]any{},
+			"mutates_live_state":        false,
+			"generated_at_utc":          nowUTC(),
+			"observed_signal_timestamp": stringField(signal, "observed_at_utc"),
+		}, nil
+	}
+	rootCause, title, action := classifyCIRootCause(stringField(signal, "log_excerpt"))
+	return map[string]any{
+		"schema_version":            "ao.sentinel.ci-triage.v0.1",
+		"status":                    "repair_required",
+		"signal_id":                 stringField(signal, "signal_id"),
+		"source":                    stringField(signal, "source"),
+		"repository":                stringField(signal, "repository"),
+		"workflow":                  stringField(signal, "workflow"),
+		"job":                       stringField(signal, "job"),
+		"severity":                  ciSeverity(rootCause),
+		"root_cause":                rootCause,
+		"recommended_action":        action,
+		"regression_test_required":  true,
+		"triage_steps":              ciTriageSteps(),
+		"next_forge_task":           map[string]any{"title": title, "acceptance": []any{"Reproduce the failing signal locally or with a fixture.", "Implement the smallest targeted repair.", "Add or update a regression test that fails before the repair and passes after it.", "Rerun the affected CI or local production-readiness gate."}},
+		"mutates_live_state":        false,
+		"generated_at_utc":          nowUTC(),
+		"observed_signal_timestamp": stringField(signal, "observed_at_utc"),
+	}, nil
+}
+
+func classifyCIRootCause(logExcerpt string) (string, string, string) {
+	lower := strings.ToLower(logExcerpt)
+	switch {
+	case strings.Contains(lower, "schema"):
+		return "contract_schema", "Fix contract schema failure", "Validate the affected JSON contract and example, then add regression coverage for the schema failure."
+	case strings.Contains(lower, "timeout") || strings.Contains(lower, "timed out") || strings.Contains(lower, "exit code 124"):
+		return "timeout", "Fix CI timeout failure", "Localize the slow command, add a bounded timeout or fixture, and prove the runtime budget is restored."
+	case strings.Contains(lower, "secret") || strings.Contains(lower, "private key") || strings.Contains(lower, "token"):
+		return "public_safety", "Fix public-safety CI failure", "Redact unsafe public content, add a scanner fixture, and rerun the safety gate."
+	case strings.Contains(lower, "flake") || strings.Contains(lower, "flaky"):
+		return "flaky_test", "Stabilize flaky CI test", "Identify the nondeterministic boundary, remove timing dependence, and add deterministic coverage."
+	default:
+		return "ci_failure", "Fix CI failure", "Read the failing log, reproduce the failure, repair the root cause, and add regression coverage."
+	}
+}
+
+func ciSeverity(rootCause string) string {
+	switch rootCause {
+	case "public_safety":
+		return "critical"
+	case "contract_schema", "timeout":
+		return "high"
+	default:
+		return "medium"
+	}
+}
+
+func ciTriageSteps() []any {
+	return []any{
+		"capture_signal",
+		"localize_failure_boundary",
+		"reproduce_or_simulate",
+		"implement_targeted_repair",
+		"verify_regression_gate",
+	}
 }
 
 func validateTarget(target map[string]any) error {

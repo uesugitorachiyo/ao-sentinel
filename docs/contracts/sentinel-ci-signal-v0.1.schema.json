@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uesugitorachiyo/ao-sentinel/docs/contracts/sentinel-ci-signal-v0.1.schema.json",
+  "title": "AO Sentinel CI Signal v0.1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "signal_id",
+    "source",
+    "repository",
+    "workflow",
+    "job",
+    "conclusion",
+    "observed_at_utc"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ao.sentinel.ci-signal.v0.1"
+    },
+    "signal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "enum": ["github-actions", "local-ci", "control-plane", "operator"]
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job": {
+      "type": "string",
+      "minLength": 1
+    },
+    "conclusion": {
+      "type": "string",
+      "enum": ["success", "passed", "failure", "failed", "cancelled", "timed_out"]
+    },
+    "log_excerpt": {
+      "type": "string",
+      "default": ""
+    },
+    "observed_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

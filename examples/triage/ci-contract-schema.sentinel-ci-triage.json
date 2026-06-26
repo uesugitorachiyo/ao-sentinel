@@ -1,0 +1,32 @@
+{
+  "schema_version": "ao.sentinel.ci-triage.v0.1",
+  "status": "repair_required",
+  "signal_id": "ci-ao-forge-123",
+  "source": "github-actions",
+  "repository": "ao-forge",
+  "workflow": "test",
+  "job": "go-test",
+  "severity": "high",
+  "root_cause": "contract_schema",
+  "recommended_action": "Validate the affected JSON contract and example, then add regression coverage for the schema failure.",
+  "regression_test_required": true,
+  "triage_steps": [
+    "capture_signal",
+    "localize_failure_boundary",
+    "reproduce_or_simulate",
+    "implement_targeted_repair",
+    "verify_regression_gate"
+  ],
+  "next_forge_task": {
+    "title": "Fix contract schema failure",
+    "acceptance": [
+      "Reproduce the failing signal locally or with a fixture.",
+      "Implement the smallest targeted repair.",
+      "Add or update a regression test that fails before the repair and passes after it.",
+      "Rerun the affected CI or local production-readiness gate."
+    ]
+  },
+  "mutates_live_state": false,
+  "generated_at_utc": "2026-06-26T12:05:00Z",
+  "observed_signal_timestamp": "2026-06-26T12:00:00Z"
+}

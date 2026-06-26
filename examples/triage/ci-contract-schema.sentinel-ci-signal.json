@@ -1,0 +1,11 @@
+{
+  "schema_version": "ao.sentinel.ci-signal.v0.1",
+  "signal_id": "ci-ao-forge-123",
+  "source": "github-actions",
+  "repository": "ao-forge",
+  "workflow": "test",
+  "job": "go-test",
+  "conclusion": "failure",
+  "log_excerpt": "go test ./... failed: schema validation failed for goal-run-context-handoff-v0.1",
+  "observed_at_utc": "2026-06-26T12:00:00Z"
+}
