@@ -14,6 +14,10 @@
 | Incident packet | `docs/contracts/sentinel-incident-v0.1.schema.json` | Machine-readable incident summary and recommended actions. |
 | Promoter hold | `docs/contracts/sentinel-promoter-hold-v0.1.schema.json` | Hold packet AO Promoter can consume. |
 | Watch run | `docs/contracts/sentinel-watch-run-v0.1.schema.json` | Dry-run monitor cycle ledger. |
+| CI signal | `docs/contracts/sentinel-ci-signal-v0.1.schema.json` | Read-only CI/observability signal for repair triage. |
+| CI triage | `docs/contracts/sentinel-ci-triage-v0.1.schema.json` | Deterministic repair packet for AO Forge. |
+| Security review request | `docs/contracts/sentinel-security-review-request-v0.1.schema.json` | Requested security scopes and evidence for a candidate change. |
+| Security review | `docs/contracts/sentinel-security-review-v0.1.schema.json` | Clear or hold packet from non-mutating security review. |
 
 ## Target Required Fields
 
@@ -75,6 +79,19 @@ and `max_duration_ms`.
 - `rollback_recommended`;
 - `mutates_live_state`.
 
+## Security Review Required Fields
+
+Security review requests use
+`ao.sentinel.security-review-request.v0.1` and must include `review_id`,
+`target_id`, `repository`, `change_summary`, `scopes`, `evidence`, and
+`observed_at_utc`.
+
+Security review packets use `ao.sentinel.security-review.v0.1` and include
+`status`, `severity`, `scopes_checked`, `findings`, `recommended_actions`,
+`promoter_hold_required`, and `mutates_live_state`. `mutates_live_state` must
+be false. Missing evidence for requested scopes becomes a hold instead of an
+automatic repair.
+
 ## Valid Fixtures
 
 - `examples/targets/valid/local-ao-stack.sentinel-target.json`
@@ -84,6 +101,8 @@ and `max_duration_ms`.
 - `examples/regression/valid/ao-stack-regression-run.json`
 - `examples/regression/valid/ao-stack-regression-diff.json`
 - `examples/verdicts/valid/clear.sentinel-verdict.json`
+- `examples/security/valid/ao-forge.security-review-request.json`
+- `examples/security/valid/ao-forge.security-review.json`
 
 ## Invalid Fixtures
 

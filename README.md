@@ -27,6 +27,7 @@ PATH="$PWD/tmp/bin:$PATH" sentinel hold emit --verdict tmp/sentinel-verdict.json
 PATH="$PWD/tmp/bin:$PATH" sentinel report render --verdict tmp/sentinel-verdict.json --incident tmp/incident-packet.json --out tmp/sentinel-report.md
 PATH="$PWD/tmp/bin:$PATH" sentinel watch dry-run --target examples/targets/valid/local-ao-stack.sentinel-target.json --suite examples/suites/valid/ao-stack-regression.sentinel-suite.json --baseline examples/baselines/valid/ao-stack.sentinel-baseline.json --iterations 1 --out tmp/watch-dry-run.json
 PATH="$PWD/tmp/bin:$PATH" sentinel triage ci --signal examples/triage/ci-contract-schema.sentinel-ci-signal.json --out tmp/ci-triage.json
+PATH="$PWD/tmp/bin:$PATH" sentinel security review --request examples/security/valid/ao-forge.security-review-request.json --out tmp/security-review.json
 git diff --check
 ```
 

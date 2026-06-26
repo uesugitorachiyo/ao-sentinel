@@ -14,7 +14,7 @@ func TestHelpListsExpectedCommandsAndUnknownCommandFails(t *testing.T) {
 	if code := Run([]string{"--help"}, &out, &err); code != 0 {
 		t.Fatalf("help exit code = %d stderr = %s", code, err.String())
 	}
-	for _, want := range []string{"target", "baseline", "safety", "run", "compare", "monitor", "incident", "hold", "report", "watch", "triage"} {
+	for _, want := range []string{"target", "baseline", "safety", "run", "compare", "monitor", "incident", "hold", "report", "watch", "triage", "security"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("help output missing %q:\n%s", want, out.String())
 		}
@@ -68,6 +68,42 @@ func TestCITriageEmitsRepairPacket(t *testing.T) {
 	observed := readMap(t, staleOut)
 	if observed["status"] != "observed" || observed["regression_test_required"] != false {
 		t.Fatalf("successful signal should not require repair: %#v", observed)
+	}
+}
+
+func TestSecurityReviewEmitsHoldForSensitiveGaps(t *testing.T) {
+	f := newFixtureSet(t)
+	request := map[string]any{
+		"schema_version":  "ao.sentinel.security-review-request.v0.1",
+		"review_id":       "security-ao-forge-001",
+		"target_id":       "local-ao-stack",
+		"repository":      "ao-forge",
+		"change_summary":  "Adds an API endpoint that handles user input but does not describe authorization.",
+		"scopes":          []any{"secrets", "input_validation", "authorization", "dependencies", "logging", "public_artifacts"},
+		"evidence":        []any{"README.md", "docs/security/PUBLIC-REPO-POLICY.md"},
+		"observed_at_utc": "2026-06-26T12:00:00Z",
+	}
+	outPath := filepath.Join(f.tmp, "security-review.json")
+	assertRunOK(t, []string{"security", "review", "--request", f.writeJSON("security-request.json", request), "--out", outPath})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.security-review.v0.1" ||
+		packet["status"] != "hold" ||
+		packet["promoter_hold_required"] != true ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("unexpected security review packet: %#v", packet)
+	}
+	findings := packet["findings"].([]any)
+	if len(findings) == 0 {
+		t.Fatalf("security review should include findings: %#v", packet)
+	}
+
+	clearRequest := cloneMap(t, request)
+	clearRequest["change_summary"] = "No secrets. Input validation uses schemas. Authorization checks are documented. Dependencies were audited. Logs redact sensitive data. Public artifacts were scanned."
+	clearOut := filepath.Join(f.tmp, "security-review-clear.json")
+	assertRunOK(t, []string{"security", "review", "--request", f.writeJSON("security-clear.json", clearRequest), "--out", clearOut})
+	clearPacket := readMap(t, clearOut)
+	if clearPacket["status"] != "clear" || clearPacket["promoter_hold_required"] != false {
+		t.Fatalf("clear security request should not hold: %#v", clearPacket)
 	}
 }
 
@@ -251,6 +287,7 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 	assertRunOK(t, []string{"target", "validate", "--target", filepath.Join(root, "examples/targets/valid/local-ao-stack.sentinel-target.json")})
 	assertRunOK(t, []string{"baseline", "validate", "--baseline", filepath.Join(root, "examples/baselines/valid/ao-stack.sentinel-baseline.json")})
 	assertRunOK(t, []string{"triage", "ci", "--signal", filepath.Join(root, "examples/triage/ci-contract-schema.sentinel-ci-signal.json"), "--out", filepath.Join(root, "tmp/checked-in-ci-triage.json")})
+	assertRunOK(t, []string{"security", "review", "--request", filepath.Join(root, "examples/security/valid/ao-forge.security-review-request.json"), "--out", filepath.Join(root, "tmp/checked-in-security-review.json")})
 
 	cases := []struct {
 		name    string

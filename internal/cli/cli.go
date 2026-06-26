@@ -55,6 +55,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		err = runWatch(args[1:], stdout)
 	case "triage":
 		err = runTriage(args[1:], stdout)
+	case "security":
+		err = runSecurity(args[1:], stdout)
 	default:
 		err = fmt.Errorf("unknown command %q", args[0])
 	}
@@ -80,8 +82,9 @@ Usage:
   sentinel report render --verdict <json> --incident <json> --out <markdown>
   sentinel watch dry-run --target <json> --suite <json> --baseline <json> --iterations <n> --out <json>
   sentinel triage ci --signal <json> --out <json>
+  sentinel security review --request <json> --out <json>
 
-Commands: target baseline safety run compare monitor incident hold report watch triage`)
+Commands: target baseline safety run compare monitor incident hold report watch triage security`)
 }
 
 func runTarget(args []string, stdout io.Writer) error {
@@ -495,6 +498,36 @@ func runTriage(args []string, stdout io.Writer) error {
 	return nil
 }
 
+func runSecurity(args []string, stdout io.Writer) error {
+	if len(args) == 0 || args[0] != "review" {
+		return errors.New("security command requires review")
+	}
+	requestPath, err := flagValue(args[1:], "--request")
+	if err != nil {
+		return err
+	}
+	out, err := flagValue(args[1:], "--out")
+	if err != nil {
+		return err
+	}
+	if err := requireTmpOutput(out); err != nil {
+		return err
+	}
+	request, err := readJSONMap(requestPath)
+	if err != nil {
+		return err
+	}
+	packet, err := reviewSecurityRequest(request)
+	if err != nil {
+		return err
+	}
+	if err := writeJSON(out, packet); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "security review: %s findings=%d\n", packet["status"], len(asAnySlice(packet["findings"])))
+	return nil
+}
+
 func triageCISignal(signal map[string]any) (map[string]any, error) {
 	if stringField(signal, "schema_version") != "ao.sentinel.ci-signal.v0.1" {
 		return nil, errors.New("unknown CI signal schema_version")
@@ -544,6 +577,110 @@ func triageCISignal(signal map[string]any) (map[string]any, error) {
 		"generated_at_utc":          nowUTC(),
 		"observed_signal_timestamp": stringField(signal, "observed_at_utc"),
 	}, nil
+}
+
+func reviewSecurityRequest(request map[string]any) (map[string]any, error) {
+	if stringField(request, "schema_version") != "ao.sentinel.security-review-request.v0.1" {
+		return nil, errors.New("unknown security review request schema_version")
+	}
+	for _, field := range []string{"review_id", "target_id", "repository", "change_summary", "observed_at_utc"} {
+		if stringField(request, field) == "" {
+			return nil, fmt.Errorf("security review request missing required field %s", field)
+		}
+	}
+	scopes := stringsFromAnySlice(request["scopes"])
+	if len(scopes) == 0 {
+		return nil, errors.New("security review request scopes are required")
+	}
+	evidence := stringsFromAnySlice(request["evidence"])
+	if len(evidence) == 0 {
+		return nil, errors.New("security review request evidence is required")
+	}
+	summary := strings.ToLower(stringField(request, "change_summary"))
+	findings := securityFindings(summary, scopes)
+	status := "clear"
+	severity := "info"
+	holdRequired := false
+	recommended := []any{}
+	if len(findings) > 0 {
+		status = "hold"
+		severity = "high"
+		holdRequired = true
+		recommended = []any{
+			"Route the finding to AO Forge as a bounded repair task.",
+			"Add regression evidence for the missing security scope.",
+			"Rerun Sentinel safety scan and production-readiness gates before promotion.",
+		}
+	}
+	return map[string]any{
+		"schema_version":          "ao.sentinel.security-review.v0.1",
+		"status":                  status,
+		"review_id":               stringField(request, "review_id"),
+		"target_id":               stringField(request, "target_id"),
+		"repository":              stringField(request, "repository"),
+		"severity":                severity,
+		"scopes_checked":          anyStrings(scopes),
+		"evidence":                anyStrings(evidence),
+		"findings":                findings,
+		"recommended_actions":     recommended,
+		"promoter_hold_required":  holdRequired,
+		"mutates_live_state":      false,
+		"generated_at_utc":        nowUTC(),
+		"observed_request_at_utc": stringField(request, "observed_at_utc"),
+	}, nil
+}
+
+func securityFindings(summary string, scopes []string) []any {
+	findings := []any{}
+	for _, scope := range scopes {
+		switch scope {
+		case "secrets":
+			if !containsAny(summary, "no secrets", "secret scan", "secrets scanned", "redacted") {
+				findings = append(findings, securityFinding(scope, "medium", "secret handling evidence is missing"))
+			}
+		case "input_validation":
+			if !containsAny(summary, "input validation", "schema", "validated") {
+				findings = append(findings, securityFinding(scope, "high", "input validation evidence is missing"))
+			}
+		case "authorization":
+			if !containsAny(summary, "authorization", "permission", "access check", "role") {
+				findings = append(findings, securityFinding(scope, "high", "authorization evidence is missing"))
+			}
+		case "dependencies":
+			if !containsAny(summary, "dependency", "dependencies", "audit") {
+				findings = append(findings, securityFinding(scope, "medium", "dependency audit evidence is missing"))
+			}
+		case "logging":
+			if !containsAny(summary, "log", "redact", "logging") {
+				findings = append(findings, securityFinding(scope, "medium", "logging redaction evidence is missing"))
+			}
+		case "public_artifacts":
+			if !containsAny(summary, "public artifact", "public artifacts", "public-safety", "safety scan") {
+				findings = append(findings, securityFinding(scope, "critical", "public artifact safety evidence is missing"))
+			}
+		default:
+			findings = append(findings, securityFinding(scope, "medium", "unknown security scope"))
+		}
+	}
+	return findings
+}
+
+func securityFinding(scope, severity, summary string) map[string]any {
+	return map[string]any{
+		"scope":              scope,
+		"severity":           severity,
+		"summary":            summary,
+		"recommended_action": "collect explicit evidence or keep promotion on hold",
+	}
+}
+
+func containsAny(haystack string, needles ...string) bool {
+	for _, needle := range needles {
+		if strings.Contains(haystack, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func classifyCIRootCause(logExcerpt string) (string, string, string) {
@@ -1139,6 +1276,25 @@ func asAnySlice(value any) []any {
 		return out
 	}
 	return []any{}
+}
+
+func stringsFromAnySlice(value any) []string {
+	raw := asAnySlice(value)
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if text, ok := item.(string); ok && strings.TrimSpace(text) != "" {
+			out = append(out, text)
+		}
+	}
+	return out
+}
+
+func anyStrings(values []string) []any {
+	out := make([]any, 0, len(values))
+	for _, value := range values {
+		out = append(out, value)
+	}
+	return out
 }
 
 func isTextFile(path string) bool {

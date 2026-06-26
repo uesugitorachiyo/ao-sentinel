@@ -1,0 +1,20 @@
+{
+  "schema_version": "ao.sentinel.security-review-request.v0.1",
+  "review_id": "security-ao-forge-goal-verification",
+  "target_id": "local-ao-stack",
+  "repository": "ao-forge",
+  "change_summary": "No secrets. Input validation uses schemas. Authorization checks are documented. Dependencies were audited. Logs redact sensitive data. Public artifacts were scanned.",
+  "scopes": [
+    "secrets",
+    "input_validation",
+    "authorization",
+    "dependencies",
+    "logging",
+    "public_artifacts"
+  ],
+  "evidence": [
+    "docs/contracts/goal-run-verification-v0.1.schema.json",
+    "examples/goals/ao2-weekend-hardening.goal-run-verification.json"
+  ],
+  "observed_at_utc": "2026-06-26T12:00:00Z"
+}
