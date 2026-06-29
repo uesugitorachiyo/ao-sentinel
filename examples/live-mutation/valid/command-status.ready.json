@@ -1,0 +1,43 @@
+{
+  "schema_version": "ao.command.live-mutation-status.v0.1",
+  "status": "ready",
+  "allowed_next_action": "request_first_tiny_live_mutation_class",
+  "first_failing_check": "",
+  "kill_switch_state": "armed",
+  "artifacts": [
+    {
+      "name": "worktree_isolation",
+      "path": "examples/live-mutation/worktree-isolation.ready.json",
+      "schema_version": "ao.foundry.worktree-isolation-proof.v0.1",
+      "status": "ready",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "name": "rollback_rehearsal",
+      "path": "examples/live-mutation/rollback-rehearsal.ready.json",
+      "schema_version": "ao.foundry.live-mutation-rollback-rehearsal.v0.1",
+      "status": "ready",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "name": "operator_kill_switch",
+      "path": "examples/live-mutation/kill-switch.armed.json",
+      "schema_version": "ao.command.live-mutation-kill-switch.v0.1",
+      "status": "armed",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "blocking_next_actions": [],
+  "maintenance_suggestions": [
+    "Keep this readback observer-only."
+  ],
+  "operator_mode": "read_only",
+  "mutates_live_state": false,
+  "mutates_repositories": false,
+  "schedules_work": false,
+  "executes_work": false,
+  "approves_work": false,
+  "calls_providers": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false
+}

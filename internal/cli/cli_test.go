@@ -14,7 +14,7 @@ func TestHelpListsExpectedCommandsAndUnknownCommandFails(t *testing.T) {
 	if code := Run([]string{"--help"}, &out, &err); code != 0 {
 		t.Fatalf("help exit code = %d stderr = %s", code, err.String())
 	}
-	for _, want := range []string{"target", "baseline", "safety", "run", "compare", "monitor", "incident", "hold", "report", "watch", "triage", "security"} {
+	for _, want := range []string{"target", "baseline", "safety", "run", "compare", "monitor", "incident", "hold", "report", "watch", "triage", "security", "live-mutation"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("help output missing %q:\n%s", want, out.String())
 		}
@@ -105,6 +105,74 @@ func TestSecurityReviewEmitsHoldForSensitiveGaps(t *testing.T) {
 	if clearPacket["status"] != "clear" || clearPacket["promoter_hold_required"] != false {
 		t.Fatalf("clear security request should not hold: %#v", clearPacket)
 	}
+}
+
+func TestLiveMutationHoldVerdict(t *testing.T) {
+	f := newFixtureSet(t)
+	status := map[string]any{
+		"schema_version":       "ao.command.live-mutation-status.v0.1",
+		"status":               "ready",
+		"allowed_next_action":  "request_first_tiny_live_mutation_class",
+		"first_failing_check":  "",
+		"kill_switch_state":    "armed",
+		"operator_mode":        "read_only",
+		"mutates_live_state":   false,
+		"mutates_repositories": false,
+		"schedules_work":       false,
+		"executes_work":        false,
+		"approves_work":        false,
+		"calls_providers":      false,
+		"artifacts": []any{
+			map[string]any{"name": "worktree_isolation", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+			map[string]any{"name": "rollback_rehearsal", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+			map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+		},
+	}
+	safety := map[string]any{
+		"schema_version":     "ao.sentinel.safety-scan.v0.1",
+		"status":             "passed",
+		"path":               "README.md",
+		"findings_count":     0,
+		"findings":           []any{},
+		"mutates_live_state": false,
+	}
+	regression := map[string]any{
+		"schema_version": "ao.sentinel.regression-diff.v0.1",
+		"status":         "passed",
+		"baseline_id":    "ao-stack-baseline",
+		"run_id":         "run-ao-stack-regression",
+		"blockers":       []any{},
+	}
+	outPath := filepath.Join(f.tmp, "live-mutation-hold.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", f.writeJSON("live-status.json", status), "--safety", f.writeJSON("live-safety.json", safety), "--regression", f.writeJSON("live-regression.json", regression), "--out", outPath})
+	clear := readMap(t, outPath)
+	if clear["schema_version"] != "ao.sentinel.live-mutation-hold.v0.1" ||
+		clear["status"] != "clear" ||
+		clear["hold_required"] != false ||
+		clear["promoter_hold_required"] != false ||
+		clear["mutates_live_state"] != false ||
+		clear["mutates_repositories"] != false {
+		t.Fatalf("unexpected clear live-mutation hold: %#v", clear)
+	}
+	if len(clear["source_artifacts"].([]any)) != 3 {
+		t.Fatalf("live-mutation hold should hash three source artifacts: %#v", clear["source_artifacts"])
+	}
+
+	missingRollback := cloneMap(t, status)
+	missingRollback["artifacts"] = []any{
+		map[string]any{"name": "worktree_isolation", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+	}
+	holdPath := filepath.Join(f.tmp, "live-mutation-hold-missing-rollback.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", f.writeJSON("missing-rollback.json", missingRollback), "--safety", f.writeJSON("safe-live.json", safety), "--regression", f.writeJSON("regression-live.json", regression), "--out", holdPath})
+	hold := readMap(t, holdPath)
+	if hold["status"] != "hold" || hold["hold_required"] != true || hold["first_failing_check"] != "rollback_rehearsal_missing" {
+		t.Fatalf("missing rollback should hold: %#v", hold)
+	}
+
+	forbidden := cloneMap(t, status)
+	forbidden["mutates_repositories"] = true
+	assertRunFails(t, []string{"live-mutation", "hold", "--status", f.writeJSON("forbidden-live.json", forbidden), "--safety", f.writeJSON("safe-forbidden.json", safety), "--regression", f.writeJSON("regression-forbidden.json", regression), "--out", filepath.Join(f.tmp, "forbidden-hold.json")}, "forbidden authority")
 }
 
 func TestTargetAndBaselineValidation(t *testing.T) {
@@ -288,6 +356,8 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 	assertRunOK(t, []string{"baseline", "validate", "--baseline", filepath.Join(root, "examples/baselines/valid/ao-stack.sentinel-baseline.json")})
 	assertRunOK(t, []string{"triage", "ci", "--signal", filepath.Join(root, "examples/triage/ci-contract-schema.sentinel-ci-signal.json"), "--out", filepath.Join(root, "tmp/checked-in-ci-triage.json")})
 	assertRunOK(t, []string{"security", "review", "--request", filepath.Join(root, "examples/security/valid/ao-forge.security-review-request.json"), "--out", filepath.Join(root, "tmp/checked-in-security-review.json")})
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/valid/command-status.ready.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold.json")})
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.missing-rollback.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold-blocked.json")})
 
 	cases := []struct {
 		name    string
@@ -308,6 +378,11 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 			name:    "missing command suite",
 			args:    []string{"run", "regression", "--suite", filepath.Join(root, "examples/suites/invalid/missing-case-command.json"), "--out", filepath.Join(root, "tmp/invalid-run.json")},
 			wantErr: "missing command",
+		},
+		{
+			name:    "live mutation forbidden authority",
+			args:    []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.forbidden-authority.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/invalid-live-mutation-hold.json")},
+			wantErr: "forbidden authority",
 		},
 	}
 	for _, tc := range cases {

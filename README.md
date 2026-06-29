@@ -28,8 +28,19 @@ PATH="$PWD/tmp/bin:$PATH" sentinel report render --verdict tmp/sentinel-verdict.
 PATH="$PWD/tmp/bin:$PATH" sentinel watch dry-run --target examples/targets/valid/local-ao-stack.sentinel-target.json --suite examples/suites/valid/ao-stack-regression.sentinel-suite.json --baseline examples/baselines/valid/ao-stack.sentinel-baseline.json --iterations 1 --out tmp/watch-dry-run.json
 PATH="$PWD/tmp/bin:$PATH" sentinel triage ci --signal examples/triage/ci-contract-schema.sentinel-ci-signal.json --out tmp/ci-triage.json
 PATH="$PWD/tmp/bin:$PATH" sentinel security review --request examples/security/valid/ao-forge.security-review-request.json --out tmp/security-review.json
+PATH="$PWD/tmp/bin:$PATH" sentinel live-mutation hold --status examples/live-mutation/valid/command-status.ready.json --safety examples/safety/valid/readme-safety.sentinel-scan.json --regression examples/regression/valid/ao-stack-regression-diff.json --out tmp/live-mutation-hold.json
 git diff --check
 ```
+
+## Governed Live-Mutation Hold
+
+`sentinel live-mutation hold` is read-only and dry-run only. It consumes AO
+Command live-mutation readback plus Sentinel safety and regression evidence,
+then emits `ao.sentinel.live-mutation-hold.v0.1`. The verdict stays on hold
+when public-safety, regression, worktree-isolation, rollback-rehearsal, or
+operator kill-switch evidence is missing or not digest-bound. It does not grant
+authority, schedule work, mutate repositories, call providers, publish, or
+release.
 
 ## SDD Files
 

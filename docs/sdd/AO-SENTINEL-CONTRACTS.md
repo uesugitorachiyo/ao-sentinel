@@ -18,6 +18,7 @@
 | CI triage | `docs/contracts/sentinel-ci-triage-v0.1.schema.json` | Deterministic repair packet for AO Forge. |
 | Security review request | `docs/contracts/sentinel-security-review-request-v0.1.schema.json` | Requested security scopes and evidence for a candidate change. |
 | Security review | `docs/contracts/sentinel-security-review-v0.1.schema.json` | Clear or hold packet from non-mutating security review. |
+| Live mutation hold | `docs/contracts/sentinel-live-mutation-hold-v0.1.schema.json` | Read-only hold or clear verdict for dry-run governed live-mutation readiness evidence. |
 
 ## Target Required Fields
 
@@ -92,6 +93,21 @@ Security review packets use `ao.sentinel.security-review.v0.1` and include
 be false. Missing evidence for requested scopes becomes a hold instead of an
 automatic repair.
 
+## Live Mutation Hold Required Fields
+
+Live mutation hold packets use `ao.sentinel.live-mutation-hold.v0.1` and must
+include `status`, `hold_required`, `promoter_hold_required`,
+`rollback_recommended`, `blockers`, `recommended_actions`, `source_artifacts`,
+and dry-run boundary fields. `operator_mode` must be `read_only`;
+`mutates_live_state`, `mutates_repositories`, `schedules_work`, `executes_work`,
+`approves_work`, `provider_calls_allowed`, and `release_or_publish_allowed`
+must be false.
+
+The Sentinel live-mutation hold command consumes AO Command live-mutation
+status, Sentinel safety scan, and Sentinel regression diff evidence. It holds
+when public-safety, regression, worktree-isolation, rollback-rehearsal, or
+operator kill-switch evidence is missing or not ready.
+
 ## Valid Fixtures
 
 - `examples/targets/valid/local-ao-stack.sentinel-target.json`
@@ -103,6 +119,8 @@ automatic repair.
 - `examples/verdicts/valid/clear.sentinel-verdict.json`
 - `examples/security/valid/ao-forge.security-review-request.json`
 - `examples/security/valid/ao-forge.security-review.json`
+- `examples/live-mutation/valid/command-status.ready.json`
+- `examples/live-mutation/valid/clear.sentinel-live-mutation-hold.json`
 
 ## Invalid Fixtures
 
@@ -113,6 +131,9 @@ automatic repair.
 - `examples/regression/invalid/failing-regression-run.json`
 - `examples/regression/invalid/budget-regression-diff.json`
 - `examples/verdicts/invalid/incident-without-hold.json`
+- `examples/live-mutation/invalid/command-status.missing-rollback.json`
+- `examples/live-mutation/invalid/command-status.forbidden-authority.json`
+- `examples/live-mutation/invalid/hold-missing-rollback.sentinel-live-mutation-hold.json`
 
 ## Validation Rules
 
@@ -124,4 +145,8 @@ automatic repair.
 - Reject safety findings with unredacted matched values.
 - Reject regression diffs whose failing cases do not appear in the suite.
 - Reject verdicts that recommend rollback without requiring a promoter hold.
+- Reject live-mutation evidence that claims scheduling, execution, approval,
+  provider, release, or repository mutation authority.
+- Hold live-mutation readiness when worktree-isolation, rollback-rehearsal, or
+  operator kill-switch evidence is missing.
 - Reject output paths outside `tmp/`.
