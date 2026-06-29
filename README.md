@@ -40,8 +40,11 @@ then emits `ao.sentinel.live-mutation-hold.v0.1`. The first docs-only live
 class stays on hold when approval-gate, worktree-preparation, docs-only
 allowlist, rollback-rehearsal, operator kill-switch, verification,
 public-safety, or regression evidence is missing, failed, or not digest-bound.
-It does not grant authority, schedule work, mutate repositories, call providers,
-publish, or release.
+Sentinel may remove its hold only when those inputs prove the exact approved
+scope is intact, but that verdict is still not live-mutation approval. It does
+not grant authority, schedule work, mutate repositories, call providers,
+publish, release, or override Covenant, Foundry, Forge, Promoter, or operator
+approval gates.
 
 ## SDD Files
 

@@ -46,9 +46,16 @@ Sentinel emits `hold` or `incident` when:
 - baseline is stale;
 - target and baseline IDs disagree;
 - target requests live mutation;
+- docs-only live mutation evidence lacks exact-scope approval, rollback proof,
+  public-safety proof, verification proof, or operator kill-switch proof;
 - output path is outside `tmp/`;
 - schema version is unknown;
 - incident packet would expose unredacted evidence.
+
+Sentinel verdicts are evidence for hold/pass decisions only. They do not grant
+live mutation authority, approve tickets, schedule work, execute patches, call
+providers, publish releases, or bypass the surrounding Covenant, Foundry, Forge,
+Promoter, Command, and operator gates.
 
 ## Redaction Rules
 

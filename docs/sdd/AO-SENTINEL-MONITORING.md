@@ -51,8 +51,12 @@ AO Sentinel emits a promoter hold when:
 - regression diff fails;
 - baseline is stale;
 - target requests live mutation;
+- first-docs-only live mutation evidence is missing exact approval, rollback,
+  public-safety, verification, or operator kill-switch proof;
 - contract drift is critical;
 - incident packet is created.
 
 The hold packet is machine-readable and contains no private prompts, local
 absolute paths, or unredacted evidence.
+It is a blocking signal for the surrounding gates, not approval to execute,
+schedule, publish, release, or mutate repositories.
