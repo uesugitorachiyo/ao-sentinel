@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -57,6 +58,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		err = runTriage(args[1:], stdout)
 	case "security":
 		err = runSecurity(args[1:], stdout)
+	case "live-mutation":
+		err = runLiveMutation(args[1:], stdout)
 	default:
 		err = fmt.Errorf("unknown command %q", args[0])
 	}
@@ -83,8 +86,9 @@ Usage:
   sentinel watch dry-run --target <json> --suite <json> --baseline <json> --iterations <n> --out <json>
   sentinel triage ci --signal <json> --out <json>
   sentinel security review --request <json> --out <json>
+  sentinel live-mutation hold --status <json> --safety <json> --regression <json> --out <json>
 
-Commands: target baseline safety run compare monitor incident hold report watch triage security`)
+Commands: target baseline safety run compare monitor incident hold report watch triage security live-mutation`)
 }
 
 func runTarget(args []string, stdout io.Writer) error {
@@ -526,6 +530,160 @@ func runSecurity(args []string, stdout io.Writer) error {
 	}
 	fmt.Fprintf(stdout, "security review: %s findings=%d\n", packet["status"], len(asAnySlice(packet["findings"])))
 	return nil
+}
+
+func runLiveMutation(args []string, stdout io.Writer) error {
+	if len(args) == 0 || args[0] != "hold" {
+		return errors.New("live-mutation command requires hold")
+	}
+	statusPath, err := flagValue(args[1:], "--status")
+	if err != nil {
+		return err
+	}
+	safetyPath, err := flagValue(args[1:], "--safety")
+	if err != nil {
+		return err
+	}
+	regressionPath, err := flagValue(args[1:], "--regression")
+	if err != nil {
+		return err
+	}
+	out, err := flagValue(args[1:], "--out")
+	if err != nil {
+		return err
+	}
+	if err := requireTmpOutput(out); err != nil {
+		return err
+	}
+	status, err := readJSONMap(statusPath)
+	if err != nil {
+		return err
+	}
+	safety, err := readJSONMap(safetyPath)
+	if err != nil {
+		return err
+	}
+	regression, err := readJSONMap(regressionPath)
+	if err != nil {
+		return err
+	}
+	hold, err := evaluateLiveMutationHold(statusPath, status, safetyPath, safety, regressionPath, regression)
+	if err != nil {
+		return err
+	}
+	if err := writeJSON(out, hold); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "live-mutation hold: %v\n", hold["hold_required"])
+	return nil
+}
+
+func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPath string, safety map[string]any, regressionPath string, regression map[string]any) (map[string]any, error) {
+	if stringField(status, "schema_version") != "ao.command.live-mutation-status.v0.1" {
+		return nil, errors.New("unknown live-mutation status schema_version")
+	}
+	if stringField(safety, "schema_version") != "ao.sentinel.safety-scan.v0.1" {
+		return nil, errors.New("unknown safety scan schema_version")
+	}
+	if stringField(regression, "schema_version") != "ao.sentinel.regression-diff.v0.1" {
+		return nil, errors.New("unknown regression diff schema_version")
+	}
+	if err := rejectUnsafeLiveMutationPayload("live_mutation_status", status); err != nil {
+		return nil, err
+	}
+	if err := rejectUnsafeLiveMutationPayload("safety", safety); err != nil {
+		return nil, err
+	}
+	if err := rejectUnsafeLiveMutationPayload("regression", regression); err != nil {
+		return nil, err
+	}
+
+	blockers := []blocker{}
+	if stringField(status, "status") != "ready" {
+		blockers = append(blockers, newBlocker("live_mutation_status_not_ready", "high", "AO Command live-mutation readback is not ready", "ao-command", "repair live-mutation evidence before requesting authority"))
+	}
+	if stringField(status, "kill_switch_state") != "armed" {
+		blockers = append(blockers, newBlocker("kill_switch_not_armed", "critical", "operator kill-switch is not armed", "kill-switch", "arm the operator kill-switch before live mutation can proceed"))
+	}
+	if stringField(safety, "status") != "passed" || numberField(safety, "findings_count") > 0 {
+		blockers = append(blockers, newBlocker("public_safety_failed", "critical", "public safety evidence is missing or failed", "safety", "clear public-safety findings before live mutation can proceed"))
+	}
+	if stringField(regression, "status") != "passed" {
+		blockers = append(blockers, newBlocker("regression_failed", "high", "regression evidence is missing or failed", "regression", "repair regression evidence before live mutation can proceed"))
+	}
+	requiredArtifacts := map[string]bool{
+		"worktree_isolation":   false,
+		"rollback_rehearsal":   false,
+		"operator_kill_switch": false,
+	}
+	for _, item := range asAnySlice(status["artifacts"]) {
+		artifact, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		name := stringField(artifact, "name")
+		if _, required := requiredArtifacts[name]; required {
+			requiredArtifacts[name] = true
+			if stringField(artifact, "sha256") == "" {
+				blockers = append(blockers, newBlocker(name+"_digest_missing", "high", "required artifact digest is missing", name, "regenerate digest-bound live-mutation readback"))
+			}
+			switch name {
+			case "operator_kill_switch":
+				if stringField(artifact, "status") != "armed" {
+					blockers = append(blockers, newBlocker("operator_kill_switch_not_armed", "critical", "operator kill-switch artifact is not armed", name, "arm the operator kill-switch"))
+				}
+			default:
+				if stringField(artifact, "status") != "ready" {
+					blockers = append(blockers, newBlocker(name+"_not_ready", "high", "required live-mutation artifact is not ready", name, "repair required live-mutation evidence"))
+				}
+			}
+		}
+	}
+	for name, seen := range requiredArtifacts {
+		if !seen {
+			blockers = append(blockers, newBlocker(name+"_missing", "critical", "required live-mutation evidence is missing", name, "provide digest-bound "+name+" evidence"))
+		}
+	}
+
+	verdict := "clear"
+	holdRequired := false
+	rollbackRecommended := false
+	firstFailingCheck := ""
+	if len(blockers) > 0 {
+		verdict = "hold"
+		holdRequired = true
+		firstFailingCheck = blockers[0].BlockerID
+		for _, b := range blockers {
+			if b.Severity == "critical" {
+				rollbackRecommended = true
+				break
+			}
+		}
+	}
+	sources, err := liveMutationSources([]string{statusPath, safetyPath, regressionPath})
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"schema_version":             "ao.sentinel.live-mutation-hold.v0.1",
+		"status":                     verdict,
+		"hold_required":              holdRequired,
+		"promoter_hold_required":     holdRequired,
+		"rollback_recommended":       rollbackRecommended,
+		"first_failing_check":        firstFailingCheck,
+		"blockers":                   blockers,
+		"recommended_actions":        recommendedActions(blockers),
+		"source_artifacts":           sources,
+		"operator_mode":              "read_only",
+		"mutates_live_state":         false,
+		"mutates_repositories":       false,
+		"schedules_work":             false,
+		"executes_work":              false,
+		"approves_work":              false,
+		"provider_calls_allowed":     false,
+		"release_or_publish_allowed": false,
+		"generated_at_utc":           nowUTC(),
+	}, nil
 }
 
 func triageCISignal(signal map[string]any) (map[string]any, error) {
@@ -1143,6 +1301,89 @@ func safetyScan(path string) (map[string]any, error) {
 		"scanned_at_utc":     nowUTC(),
 		"mutates_live_state": false,
 	}, nil
+}
+
+func liveMutationSources(paths []string) ([]any, error) {
+	out := make([]any, 0, len(paths))
+	for _, path := range paths {
+		raw, err := readJSONMap(path)
+		if err != nil {
+			return nil, err
+		}
+		sha, err := sha256File(path)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"path":           filepath.ToSlash(path),
+			"schema_version": stringField(raw, "schema_version"),
+			"status":         firstNonEmpty(stringField(raw, "status"), stringField(raw, "verdict")),
+			"sha256":         sha,
+		})
+	}
+	return out, nil
+}
+
+func rejectUnsafeLiveMutationPayload(label string, value any) error {
+	switch v := value.(type) {
+	case map[string]any:
+		for key, item := range v {
+			switch key {
+			case "mutates_live_state", "mutates_repositories", "schedules_work", "executes_work", "approves_work", "calls_providers", "provider_calls_allowed", "release_or_publish_allowed", "uploads_artifacts", "live_mutation_allowed":
+				if b, ok := item.(bool); ok && b {
+					return fmt.Errorf("%s expands forbidden authority via %s", label, key)
+				}
+			}
+			if err := rejectUnsafeLiveMutationPayload(label+"."+key, item); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for i, item := range v {
+			if err := rejectUnsafeLiveMutationPayload(fmt.Sprintf("%s[%d]", label, i), item); err != nil {
+				return err
+			}
+		}
+	case string:
+		if containsUnsafePath(v) {
+			return fmt.Errorf("%s contains unsafe local path", label)
+		}
+	}
+	return nil
+}
+
+func containsUnsafePath(value string) bool {
+	unsafeMarkers := []string{
+		"/" + "Users/",
+		"/" + "home/",
+		"C:" + `\` + "Users" + `\`,
+		"/" + "tmp/",
+		"/" + "var/folders/",
+	}
+	for _, marker := range unsafeMarkers {
+		if strings.Contains(value, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func sha256File(path string) (string, error) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(body)
+	return fmt.Sprintf("%x", sum[:]), nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func detectors() []struct {

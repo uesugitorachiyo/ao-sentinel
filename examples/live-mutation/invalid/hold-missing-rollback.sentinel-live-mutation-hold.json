@@ -1,0 +1,30 @@
+{
+  "schema_version": "ao.sentinel.live-mutation-hold.v0.1",
+  "status": "hold",
+  "hold_required": true,
+  "promoter_hold_required": true,
+  "rollback_recommended": true,
+  "first_failing_check": "rollback_rehearsal_missing",
+  "blockers": [
+    {
+      "blocker_id": "rollback_rehearsal_missing",
+      "severity": "critical",
+      "reason": "required live-mutation evidence is missing",
+      "source": "rollback_rehearsal",
+      "recommended_action": "provide digest-bound rollback_rehearsal evidence"
+    }
+  ],
+  "recommended_actions": [
+    "provide digest-bound rollback_rehearsal evidence"
+  ],
+  "source_artifacts": [],
+  "operator_mode": "read_only",
+  "mutates_live_state": false,
+  "mutates_repositories": false,
+  "schedules_work": false,
+  "executes_work": false,
+  "approves_work": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false,
+  "generated_at_utc": "2026-06-29T00:00:00Z"
+}

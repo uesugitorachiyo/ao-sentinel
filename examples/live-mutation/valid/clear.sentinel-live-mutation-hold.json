@@ -1,0 +1,39 @@
+{
+  "schema_version": "ao.sentinel.live-mutation-hold.v0.1",
+  "status": "clear",
+  "hold_required": false,
+  "promoter_hold_required": false,
+  "rollback_recommended": false,
+  "first_failing_check": "",
+  "blockers": [],
+  "recommended_actions": [],
+  "source_artifacts": [
+    {
+      "path": "examples/live-mutation/valid/command-status.ready.json",
+      "schema_version": "ao.command.live-mutation-status.v0.1",
+      "status": "ready",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "path": "examples/safety/valid/readme-safety.sentinel-scan.json",
+      "schema_version": "ao.sentinel.safety-scan.v0.1",
+      "status": "passed",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "path": "examples/regression/valid/ao-stack-regression-diff.json",
+      "schema_version": "ao.sentinel.regression-diff.v0.1",
+      "status": "passed",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  ],
+  "operator_mode": "read_only",
+  "mutates_live_state": false,
+  "mutates_repositories": false,
+  "schedules_work": false,
+  "executes_work": false,
+  "approves_work": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false,
+  "generated_at_utc": "2026-06-29T00:00:00Z"
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ao.local/contracts/sentinel-live-mutation-hold-v0.1.schema.json",
+  "title": "AO Sentinel Live Mutation Hold v0.1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "hold_required",
+    "promoter_hold_required",
+    "rollback_recommended",
+    "blockers",
+    "recommended_actions",
+    "source_artifacts",
+    "operator_mode",
+    "mutates_live_state",
+    "mutates_repositories",
+    "schedules_work",
+    "executes_work",
+    "approves_work",
+    "provider_calls_allowed",
+    "release_or_publish_allowed"
+  ],
+  "properties": {
+    "schema_version": { "const": "ao.sentinel.live-mutation-hold.v0.1" },
+    "status": { "enum": ["clear", "hold"] },
+    "hold_required": { "type": "boolean" },
+    "promoter_hold_required": { "type": "boolean" },
+    "rollback_recommended": { "type": "boolean" },
+    "blockers": { "type": "array" },
+    "recommended_actions": { "type": "array" },
+    "source_artifacts": { "type": "array" },
+    "operator_mode": { "const": "read_only" },
+    "mutates_live_state": { "const": false },
+    "mutates_repositories": { "const": false },
+    "schedules_work": { "const": false },
+    "executes_work": { "const": false },
+    "approves_work": { "const": false },
+    "provider_calls_allowed": { "const": false },
+    "release_or_publish_allowed": { "const": false }
+  },
+  "additionalProperties": true
+}
