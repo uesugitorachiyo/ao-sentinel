@@ -6,18 +6,39 @@
   "kill_switch_state": "armed",
   "artifacts": [
     {
-      "name": "worktree_isolation",
-      "path": "examples/live-mutation/worktree-isolation.ready.json",
-      "schema_version": "ao.foundry.worktree-isolation-proof.v0.1",
+      "name": "live_docs_approval_gate",
+      "path": "examples/live-mutation/live-docs-approval-gate.ready.json",
+      "schema_version": "ao.foundry.live-docs-approval-gate.v0.1",
       "status": "ready",
       "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "name": "live_docs_worktree_prepare",
+      "path": "examples/live-mutation/live-docs-worktree-prepare.ready.json",
+      "schema_version": "ao.foundry.live-docs-worktree-prepare.v0.1",
+      "status": "ready",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "name": "docs_only_allowlist",
+      "path": "examples/live-mutation/docs-only-allowlist.ready.json",
+      "schema_version": "ao.foundry.live-docs-allowlist.v0.1",
+      "status": "ready",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
     },
     {
       "name": "operator_kill_switch",
       "path": "examples/live-mutation/kill-switch.armed.json",
       "schema_version": "ao.command.live-mutation-kill-switch.v0.1",
       "status": "armed",
-      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "name": "verification_evidence",
+      "path": "examples/live-mutation/verification-evidence.passed.json",
+      "schema_version": "ao.foundry.live-docs-verification-evidence.v0.1",
+      "status": "passed",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
     }
   ],
   "operator_mode": "read_only",

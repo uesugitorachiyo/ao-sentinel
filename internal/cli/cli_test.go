@@ -123,9 +123,12 @@ func TestLiveMutationHoldVerdict(t *testing.T) {
 		"approves_work":        false,
 		"calls_providers":      false,
 		"artifacts": []any{
-			map[string]any{"name": "worktree_isolation", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+			map[string]any{"name": "live_docs_approval_gate", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+			map[string]any{"name": "live_docs_worktree_prepare", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+			map[string]any{"name": "docs_only_allowlist", "status": "ready", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
 			map[string]any{"name": "rollback_rehearsal", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
 			map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+			map[string]any{"name": "verification_evidence", "status": "passed", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
 		},
 	}
 	safety := map[string]any{
@@ -160,14 +163,47 @@ func TestLiveMutationHoldVerdict(t *testing.T) {
 
 	missingRollback := cloneMap(t, status)
 	missingRollback["artifacts"] = []any{
-		map[string]any{"name": "worktree_isolation", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		map[string]any{"name": "live_docs_approval_gate", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		map[string]any{"name": "live_docs_worktree_prepare", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		map[string]any{"name": "docs_only_allowlist", "status": "ready", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
 		map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+		map[string]any{"name": "verification_evidence", "status": "passed", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
 	}
 	holdPath := filepath.Join(f.tmp, "live-mutation-hold-missing-rollback.json")
 	assertRunOK(t, []string{"live-mutation", "hold", "--status", f.writeJSON("missing-rollback.json", missingRollback), "--safety", f.writeJSON("safe-live.json", safety), "--regression", f.writeJSON("regression-live.json", regression), "--out", holdPath})
 	hold := readMap(t, holdPath)
 	if hold["status"] != "hold" || hold["hold_required"] != true || hold["first_failing_check"] != "rollback_rehearsal_missing" {
 		t.Fatalf("missing rollback should hold: %#v", hold)
+	}
+
+	missingApproval := cloneMap(t, status)
+	missingApproval["artifacts"] = []any{
+		map[string]any{"name": "live_docs_worktree_prepare", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		map[string]any{"name": "docs_only_allowlist", "status": "ready", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+		map[string]any{"name": "rollback_rehearsal", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+		map[string]any{"name": "verification_evidence", "status": "passed", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
+	}
+	missingApprovalPath := filepath.Join(f.tmp, "live-mutation-hold-missing-approval.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", f.writeJSON("missing-approval.json", missingApproval), "--safety", f.writeJSON("safe-live-approval.json", safety), "--regression", f.writeJSON("regression-live-approval.json", regression), "--out", missingApprovalPath})
+	approvalHold := readMap(t, missingApprovalPath)
+	if approvalHold["status"] != "hold" || approvalHold["first_failing_check"] != "live_docs_approval_gate_missing" {
+		t.Fatalf("missing approval gate should hold: %#v", approvalHold)
+	}
+
+	missingVerification := cloneMap(t, status)
+	missingVerification["artifacts"] = []any{
+		map[string]any{"name": "live_docs_approval_gate", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		map[string]any{"name": "live_docs_worktree_prepare", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		map[string]any{"name": "docs_only_allowlist", "status": "ready", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+		map[string]any{"name": "rollback_rehearsal", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+	}
+	missingVerificationPath := filepath.Join(f.tmp, "live-mutation-hold-missing-verification.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", f.writeJSON("missing-verification.json", missingVerification), "--safety", f.writeJSON("safe-live-verification.json", safety), "--regression", f.writeJSON("regression-live-verification.json", regression), "--out", missingVerificationPath})
+	verificationHold := readMap(t, missingVerificationPath)
+	if verificationHold["status"] != "hold" || verificationHold["first_failing_check"] != "verification_evidence_missing" {
+		t.Fatalf("missing verification evidence should hold: %#v", verificationHold)
 	}
 
 	forbidden := cloneMap(t, status)

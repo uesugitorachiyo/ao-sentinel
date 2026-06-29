@@ -39,18 +39,7 @@
       "schema_version": "ao.command.live-mutation-kill-switch.v0.1",
       "status": "armed",
       "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
-    },
-    {
-      "name": "verification_evidence",
-      "path": "examples/live-mutation/verification-evidence.passed.json",
-      "schema_version": "ao.foundry.live-docs-verification-evidence.v0.1",
-      "status": "passed",
-      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
     }
-  ],
-  "blocking_next_actions": [],
-  "maintenance_suggestions": [
-    "Keep this readback observer-only."
   ],
   "operator_mode": "read_only",
   "mutates_live_state": false,

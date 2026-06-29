@@ -104,9 +104,10 @@ and dry-run boundary fields. `operator_mode` must be `read_only`;
 must be false.
 
 The Sentinel live-mutation hold command consumes AO Command live-mutation
-status, Sentinel safety scan, and Sentinel regression diff evidence. It holds
-when public-safety, regression, worktree-isolation, rollback-rehearsal, or
-operator kill-switch evidence is missing or not ready.
+status, Sentinel safety scan, and Sentinel regression diff evidence. For the
+first docs-only live class it holds when approval-gate, worktree-preparation,
+docs-only allowlist, rollback-rehearsal, operator kill-switch, verification,
+public-safety, or regression evidence is missing, failed, or not ready.
 
 ## Valid Fixtures
 
@@ -131,7 +132,9 @@ operator kill-switch evidence is missing or not ready.
 - `examples/regression/invalid/failing-regression-run.json`
 - `examples/regression/invalid/budget-regression-diff.json`
 - `examples/verdicts/invalid/incident-without-hold.json`
+- `examples/live-mutation/invalid/command-status.missing-approval.json`
 - `examples/live-mutation/invalid/command-status.missing-rollback.json`
+- `examples/live-mutation/invalid/command-status.missing-verification.json`
 - `examples/live-mutation/invalid/command-status.forbidden-authority.json`
 - `examples/live-mutation/invalid/hold-missing-rollback.sentinel-live-mutation-hold.json`
 
@@ -147,6 +150,7 @@ operator kill-switch evidence is missing or not ready.
 - Reject verdicts that recommend rollback without requiring a promoter hold.
 - Reject live-mutation evidence that claims scheduling, execution, approval,
   provider, release, or repository mutation authority.
-- Hold live-mutation readiness when worktree-isolation, rollback-rehearsal, or
-  operator kill-switch evidence is missing.
+- Hold docs-only live-mutation readiness when approval-gate,
+  worktree-preparation, docs-only allowlist, rollback-rehearsal, operator
+  kill-switch, or verification evidence is missing.
 - Reject output paths outside `tmp/`.
