@@ -611,37 +611,31 @@ func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPa
 	if stringField(regression, "status") != "passed" {
 		blockers = append(blockers, newBlocker("regression_failed", "high", "regression evidence is missing or failed", "regression", "repair regression evidence before live mutation can proceed"))
 	}
-	requiredArtifacts := map[string]bool{
-		"worktree_isolation":   false,
-		"rollback_rehearsal":   false,
-		"operator_kill_switch": false,
+	artifacts := liveMutationArtifactMap(status)
+	requiredArtifacts := []struct {
+		name        string
+		readyStatus string
+		severity    string
+		action      string
+	}{
+		{"live_docs_approval_gate", "ready", "critical", "provide exact-scope approved docs-only approval gate evidence"},
+		{"live_docs_worktree_prepare", "ready", "critical", "provide clean isolated docs-only worktree preparation evidence"},
+		{"docs_only_allowlist", "ready", "critical", "provide docs-only allowlist evidence before live mutation can proceed"},
+		{"rollback_rehearsal", "ready", "critical", "provide digest-bound rollback_rehearsal evidence"},
+		{"operator_kill_switch", "armed", "critical", "arm the operator kill-switch"},
+		{"verification_evidence", "passed", "high", "provide passing verification evidence for the docs-only class"},
 	}
-	for _, item := range asAnySlice(status["artifacts"]) {
-		artifact, ok := item.(map[string]any)
-		if !ok {
+	for _, required := range requiredArtifacts {
+		artifact, seen := artifacts[required.name]
+		if !seen {
+			blockers = append(blockers, newBlocker(required.name+"_missing", required.severity, "required docs-only live-mutation evidence is missing", required.name, required.action))
 			continue
 		}
-		name := stringField(artifact, "name")
-		if _, required := requiredArtifacts[name]; required {
-			requiredArtifacts[name] = true
-			if stringField(artifact, "sha256") == "" {
-				blockers = append(blockers, newBlocker(name+"_digest_missing", "high", "required artifact digest is missing", name, "regenerate digest-bound live-mutation readback"))
-			}
-			switch name {
-			case "operator_kill_switch":
-				if stringField(artifact, "status") != "armed" {
-					blockers = append(blockers, newBlocker("operator_kill_switch_not_armed", "critical", "operator kill-switch artifact is not armed", name, "arm the operator kill-switch"))
-				}
-			default:
-				if stringField(artifact, "status") != "ready" {
-					blockers = append(blockers, newBlocker(name+"_not_ready", "high", "required live-mutation artifact is not ready", name, "repair required live-mutation evidence"))
-				}
-			}
+		if stringField(artifact, "sha256") == "" {
+			blockers = append(blockers, newBlocker(required.name+"_digest_missing", "high", "required artifact digest is missing", required.name, "regenerate digest-bound live-mutation readback"))
 		}
-	}
-	for name, seen := range requiredArtifacts {
-		if !seen {
-			blockers = append(blockers, newBlocker(name+"_missing", "critical", "required live-mutation evidence is missing", name, "provide digest-bound "+name+" evidence"))
+		if stringField(artifact, "status") != required.readyStatus {
+			blockers = append(blockers, newBlocker(required.name+"_not_ready", required.severity, "required docs-only live-mutation artifact is not ready", required.name, required.action))
 		}
 	}
 
@@ -1324,6 +1318,22 @@ func liveMutationSources(paths []string) ([]any, error) {
 	return out, nil
 }
 
+func liveMutationArtifactMap(status map[string]any) map[string]map[string]any {
+	artifacts := map[string]map[string]any{}
+	for _, item := range asAnySlice(status["artifacts"]) {
+		artifact, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		name := stringField(artifact, "name")
+		if name == "" {
+			continue
+		}
+		artifacts[name] = artifact
+	}
+	return artifacts
+}
+
 func rejectUnsafeLiveMutationPayload(label string, value any) error {
 	switch v := value.(type) {
 	case map[string]any:
@@ -1392,6 +1402,7 @@ func detectors() []struct {
 	summary  string
 	re       *regexp.Regexp
 } {
+	localPathPattern := `(/` + `Users/[^ \n]+|/` + `home/[^ \n]+|C:\\` + `Users\\[^ \n]+)`
 	return []struct {
 		name     string
 		severity string
@@ -1403,7 +1414,7 @@ func detectors() []struct {
 		{"github_token", "critical", "GitHub-token-like value detected", regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{20,}`)},
 		{"cloud_access_key", "critical", "cloud access-key-like value detected", regexp.MustCompile(`A` + `KIA[0-9A-Z]{16}`)},
 		{"password_assignment", "critical", "password assignment pattern detected", regexp.MustCompile(`(?i)\b(password|passwd|secret)\s*[:=]`)},
-		{"local_absolute_path", "high", "local absolute path detected", regexp.MustCompile(`(/Users/[^ \n]+|/home/[^ \n]+|C:\\Users\\[^ \n]+)`)},
+		{"local_absolute_path", "high", "local absolute path detected", regexp.MustCompile(localPathPattern)},
 		{"forbidden_action_command", "high", "forbidden action command detected", regexp.MustCompile(`(?i)\b(git push|git tag|gh release|npm publish|twine upload|docker push|kubectl apply|terraform apply)\b`)},
 	}
 }
