@@ -685,30 +685,18 @@ func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPa
 		blockers = append(blockers, newBlocker("regression_failed", "high", "regression evidence is missing or failed", "regression", "repair regression evidence before live mutation can proceed"))
 	}
 	artifacts := liveMutationArtifactMap(status)
-	requiredArtifacts := []struct {
-		name        string
-		readyStatus string
-		severity    string
-		action      string
-	}{
-		{"live_docs_approval_gate", "ready", "critical", "provide exact-scope approved docs-only approval gate evidence"},
-		{"live_docs_worktree_prepare", "ready", "critical", "provide clean isolated docs-only worktree preparation evidence"},
-		{"docs_only_allowlist", "ready", "critical", "provide docs-only allowlist evidence before live mutation can proceed"},
-		{"rollback_rehearsal", "ready", "critical", "provide digest-bound rollback_rehearsal evidence"},
-		{"operator_kill_switch", "armed", "critical", "arm the operator kill-switch"},
-		{"verification_evidence", "passed", "high", "provide passing verification evidence for the docs-only class"},
-	}
+	requiredArtifacts := liveMutationRequiredArtifacts(stringField(status, "mutation_class"))
 	for _, required := range requiredArtifacts {
 		artifact, seen := artifacts[required.name]
 		if !seen {
-			blockers = append(blockers, newBlocker(required.name+"_missing", required.severity, "required docs-only live-mutation evidence is missing", required.name, required.action))
+			blockers = append(blockers, newBlocker(required.name+"_missing", required.severity, "required live-mutation evidence is missing", required.name, required.action))
 			continue
 		}
 		if stringField(artifact, "sha256") == "" {
 			blockers = append(blockers, newBlocker(required.name+"_digest_missing", "high", "required artifact digest is missing", required.name, "regenerate digest-bound live-mutation readback"))
 		}
 		if stringField(artifact, "status") != required.readyStatus {
-			blockers = append(blockers, newBlocker(required.name+"_not_ready", required.severity, "required docs-only live-mutation artifact is not ready", required.name, required.action))
+			blockers = append(blockers, newBlocker(required.name+"_not_ready", required.severity, "required live-mutation artifact is not ready", required.name, required.action))
 		}
 	}
 	classBlockers, classVerdict := evaluateMutationClassHold(status)
@@ -755,6 +743,34 @@ func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPa
 		"release_or_publish_allowed": false,
 		"generated_at_utc":           nowUTC(),
 	}, nil
+}
+
+type liveMutationRequiredArtifact struct {
+	name        string
+	readyStatus string
+	severity    string
+	action      string
+}
+
+func liveMutationRequiredArtifacts(mutationClass string) []liveMutationRequiredArtifact {
+	if mutationClass == "test_only" {
+		return []liveMutationRequiredArtifact{
+			{"test_only_class_gate", "ready", "critical", "provide exact-scope approved test-only class gate evidence"},
+			{"test_only_worktree_prepare", "ready", "critical", "provide clean isolated test-only worktree preparation evidence"},
+			{"test_only_allowlist", "ready", "critical", "provide test-only allowlist evidence before live mutation can proceed"},
+			{"rollback_rehearsal", "ready", "critical", "provide digest-bound rollback_rehearsal evidence"},
+			{"operator_kill_switch", "armed", "critical", "arm the operator kill-switch"},
+			{"verification_evidence", "passed", "high", "provide passing verification evidence for the test-only class"},
+		}
+	}
+	return []liveMutationRequiredArtifact{
+		{"live_docs_approval_gate", "ready", "critical", "provide exact-scope approved docs-only approval gate evidence"},
+		{"live_docs_worktree_prepare", "ready", "critical", "provide clean isolated docs-only worktree preparation evidence"},
+		{"docs_only_allowlist", "ready", "critical", "provide docs-only allowlist evidence before live mutation can proceed"},
+		{"rollback_rehearsal", "ready", "critical", "provide digest-bound rollback_rehearsal evidence"},
+		{"operator_kill_switch", "armed", "critical", "arm the operator kill-switch"},
+		{"verification_evidence", "passed", "high", "provide passing verification evidence for the docs-only class"},
+	}
 }
 
 func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any) {

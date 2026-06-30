@@ -213,6 +213,14 @@ func TestLiveMutationHoldVerdict(t *testing.T) {
 			name: "test coverage insufficient",
 			edit: func(candidate map[string]any) {
 				candidate["mutation_class"] = "test_only"
+				candidate["artifacts"] = []any{
+					map[string]any{"name": "test_only_class_gate", "status": "ready", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+					map[string]any{"name": "test_only_worktree_prepare", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+					map[string]any{"name": "test_only_allowlist", "status": "ready", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+					map[string]any{"name": "rollback_rehearsal", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+					map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+					map[string]any{"name": "verification_evidence", "status": "passed", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
+				}
 				candidate["changed_files"] = []any{map[string]any{"path": "internal/cli/cli_test.go", "file_class": "test", "change_type": "modified"}}
 				candidate["diff_summary"] = map[string]any{"files_changed": 1, "additions": 12, "deletions": 4, "total_lines_changed": 16}
 				candidate["test_coverage"] = map[string]any{"status": "missing"}
@@ -506,6 +514,16 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 	checkedInClear := readMap(t, checkedInClearPath)
 	if checkedInClear["status"] != "clear" || checkedInClear["mutation_class"] != "docs_only_multi_file" {
 		t.Fatalf("checked-in live mutation fixture should clear with class readback: %#v", checkedInClear)
+	}
+	checkedInTestOnlyClearPath := filepath.Join(root, "tmp/checked-in-live-mutation-hold-test-only.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/valid/command-status.test-only-ready.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", checkedInTestOnlyClearPath})
+	checkedInTestOnlyClear := readMap(t, checkedInTestOnlyClearPath)
+	testOnlyVerdict, ok := checkedInTestOnlyClear["class_hold_verdict"].(map[string]any)
+	if checkedInTestOnlyClear["status"] != "clear" ||
+		checkedInTestOnlyClear["mutation_class"] != "test_only" ||
+		!ok ||
+		testOnlyVerdict["test_coverage_status"] != "passed" {
+		t.Fatalf("checked-in test_only fixture should clear with passed coverage: %#v", checkedInTestOnlyClear)
 	}
 	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.missing-rollback.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold-blocked.json")})
 
