@@ -36,15 +36,17 @@ git diff --check
 
 `sentinel live-mutation hold` is read-only and dry-run only. It consumes AO
 Command live-mutation readback plus Sentinel safety and regression evidence,
-then emits `ao.sentinel.live-mutation-hold.v0.1`. The first docs-only live
-class stays on hold when approval-gate, worktree-preparation, docs-only
-allowlist, rollback-rehearsal, operator kill-switch, verification,
-public-safety, or regression evidence is missing, failed, or not digest-bound.
-Sentinel may remove its hold only when those inputs prove the exact approved
-scope is intact, but that verdict is still not live-mutation approval. It does
-not grant authority, schedule work, mutate repositories, call providers,
-publish, release, or override Covenant, Foundry, Forge, Promoter, or operator
-approval gates.
+then emits `ao.sentinel.live-mutation-hold.v0.1`. The packet now includes a
+`mutation_class` and `class_hold_verdict` readback. Sentinel holds when
+approval-gate, worktree-preparation, docs-only allowlist, rollback-rehearsal,
+operator kill-switch, verification, public-safety, regression, test coverage,
+class-bound rollback proof, diff size, file class, evidence freshness, or CI
+status is missing, failed, stale, too broad, or not digest-bound. Sentinel may
+remove its hold only when those inputs prove the exact approved scope is
+intact, but that verdict is still not live-mutation approval. It does not grant
+authority, schedule work, mutate repositories, call providers, publish,
+release, or override Covenant, Foundry, Forge, Promoter, or operator approval
+gates.
 
 ## SDD Files
 
