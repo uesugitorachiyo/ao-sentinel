@@ -1,0 +1,34 @@
+{
+  "schema_version": "ao.command.live-mutation-status.v0.1",
+  "status": "ready",
+  "allowed_next_action": "request_low_risk_code_dry_run",
+  "first_failing_check": "",
+  "mutation_class": "low_risk_code",
+  "kill_switch_state": "armed",
+  "artifacts": [
+    { "name": "low_risk_code_class_gate", "path": "examples/live-mutation/low-risk-code-class-gate.ready.json", "schema_version": "ao.foundry.class-gate.v0.1", "status": "ready", "sha256": "1111111111111111111111111111111111111111111111111111111111111111" },
+    { "name": "test_only_success", "path": "examples/live-mutation/test-only-live-rehearsal.success.json", "schema_version": "ao.atlas.live-rehearsal-evidence.v0.1", "status": "completed", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" },
+    { "name": "low_risk_code_allowlist", "path": "examples/live-mutation/low-risk-code-allowlist.ready.json", "schema_version": "ao.foundry.low-risk-code-allowlist.v0.1", "status": "ready", "sha256": "3333333333333333333333333333333333333333333333333333333333333333" },
+    { "name": "rollback_rehearsal", "path": "examples/live-mutation/rollback-rehearsal.low-risk-code-ready.json", "schema_version": "ao.foundry.live-mutation-rollback-rehearsal.v0.1", "status": "ready", "sha256": "4444444444444444444444444444444444444444444444444444444444444444" },
+    { "name": "operator_kill_switch", "path": "examples/live-mutation/kill-switch.armed.json", "schema_version": "ao.command.live-mutation-kill-switch.v0.1", "status": "armed", "sha256": "5555555555555555555555555555555555555555555555555555555555555555" },
+    { "name": "verification_evidence", "path": "examples/live-mutation/verification-evidence.low-risk-code-passed.json", "schema_version": "ao.foundry.low-risk-code-verification-evidence.v0.1", "status": "passed", "sha256": "6666666666666666666666666666666666666666666666666666666666666666" }
+  ],
+  "changed_files": [
+    { "path": "internal/atlas/validate.go", "file_class": "code", "change_type": "modified" },
+    { "path": "internal/atlas/render.go", "file_class": "code", "change_type": "modified" }
+  ],
+  "diff_summary": { "files_changed": 2, "additions": 18, "deletions": 4, "total_lines_changed": 22 },
+  "test_coverage": { "status": "passed", "command": "go test ./...", "mutation_class": "low_risk_code" },
+  "rollback_proof": { "status": "ready", "mutation_class": "low_risk_code", "scope": "internal/atlas/validate.go,internal/atlas/render.go", "sha256": "7777777777777777777777777777777777777777777777777777777777777777" },
+  "evidence_freshness": { "status": "fresh", "checked_at_utc": "2026-06-30T00:00:00Z", "expires_at_utc": "2999-01-01T00:00:00Z" },
+  "ci_status": { "status": "passed", "required": true, "observed_at_utc": "2026-06-30T00:00:00Z", "expires_at_utc": "2999-01-01T00:00:00Z" },
+  "operator_mode": "read_only",
+  "mutates_live_state": false,
+  "mutates_repositories": false,
+  "schedules_work": false,
+  "executes_work": false,
+  "approves_work": false,
+  "calls_providers": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false
+}

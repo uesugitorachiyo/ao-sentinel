@@ -533,7 +533,9 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 		checkedInLowRiskClear["mutation_class"] != "low_risk_code" ||
 		!ok ||
 		lowRiskVerdict["test_coverage_status"] != "passed" ||
-		lowRiskVerdict["file_class_status"] != "passed" {
+		lowRiskVerdict["file_class_status"] != "passed" ||
+		lowRiskVerdict["source_files_changed"] != float64(1) ||
+		lowRiskVerdict["test_files_changed"] != float64(1) {
 		t.Fatalf("checked-in low_risk_code fixture should clear with coverage and file class readback: %#v", checkedInLowRiskClear)
 	}
 	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.missing-rollback.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold-blocked.json")})
@@ -548,6 +550,9 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 		{"command-status.file-class-forbidden.json", "file_class_forbidden"},
 		{"command-status.evidence-stale.json", "evidence_stale"},
 		{"command-status.ci-status-insufficient.json", "ci_status_insufficient"},
+		{"command-status.low-risk-code.missing-test-change.json", "test_change_required"},
+		{"command-status.low-risk-code.source-limit-exceeded.json", "source_file_limit_exceeded"},
+		{"command-status.low-risk-code.forbidden-script.json", "forbidden_path_class_touched"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outPath := filepath.Join(root, "tmp", strings.TrimSuffix(tc.name, ".json")+".hold.json")

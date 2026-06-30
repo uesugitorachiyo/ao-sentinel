@@ -19,13 +19,16 @@ import (
 var allowedTargetKinds = setOf("active_stack", "candidate_stack", "component", "release_candidate")
 
 type mutationClassPolicy struct {
-	MaxFiles         int
-	MaxLinesChanged  int
-	AllowedPaths     []string
-	ForbiddenPaths   []string
-	AllowedFileClass map[string]bool
-	CoverageRequired bool
-	RequiresCI       bool
+	MaxFiles                int
+	MaxLinesChanged         int
+	MaxSourceFiles          int
+	MaxTestFiles            int
+	RequireTestFileWithCode bool
+	AllowedPaths            []string
+	ForbiddenPaths          []string
+	AllowedFileClass        map[string]bool
+	CoverageRequired        bool
+	RequiresCI              bool
 }
 
 var mutationClassPolicies = map[string]mutationClassPolicy{
@@ -63,13 +66,16 @@ var mutationClassPolicies = map[string]mutationClassPolicy{
 		RequiresCI:       true,
 	},
 	"low_risk_code": {
-		MaxFiles:         2,
-		MaxLinesChanged:  160,
-		AllowedPaths:     []string{"cmd/", "internal/", "pkg/", "scripts/"},
-		ForbiddenPaths:   []string{".github/", "deploy/", "infra/", "terraform/", "secrets/"},
-		AllowedFileClass: setOf("code", "test"),
-		CoverageRequired: true,
-		RequiresCI:       true,
+		MaxFiles:                2,
+		MaxLinesChanged:         160,
+		MaxSourceFiles:          1,
+		MaxTestFiles:            1,
+		RequireTestFileWithCode: true,
+		AllowedPaths:            []string{"internal/", "pkg/", "crates/ao2-core/src/", "crates/ao2-core/tests/"},
+		ForbiddenPaths:          []string{".github/", "cmd/", "config/", "configs/", "deploy/", "docs/", "examples/", "infra/", "release/", "releases/", "schemas/", "scripts/", "secrets/", "terraform/", "go.mod", "go.sum", "Cargo.toml", "Cargo.lock"},
+		AllowedFileClass:        setOf("code", "test"),
+		CoverageRequired:        true,
+		RequiresCI:              true,
 	},
 	"multi_repo_low_risk": {
 		MaxFiles:         4,
@@ -840,6 +846,9 @@ func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any
 	}
 
 	fileClassStatus := "passed"
+	sourceFilesChanged := 0
+	testFilesChanged := 0
+	forbiddenPathClasses := []string{}
 	changedFiles := asAnySlice(status["changed_files"])
 	if len(changedFiles) == 0 {
 		fileClassStatus = "missing"
@@ -863,9 +872,38 @@ func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any
 			blockers = append(blockers, newBlocker("file_class_insufficient", "high", "changed file path or class is missing", "changed_files", "provide per-file path and class evidence"))
 			continue
 		}
+		if mutationClass == "low_risk_code" {
+			if pathClass := lowRiskCodeForbiddenPathClass(path, stringField(file, "change_type")); pathClass != "" {
+				forbiddenPathClasses = append(forbiddenPathClasses, pathClass)
+				fileClassStatus = "forbidden"
+				blockers = append(blockers, newBlocker("forbidden_path_class_touched", "critical", "low_risk_code touched a forbidden path class", "changed_files", "move the change into the approved low-risk source/test scope or request a higher governed class"))
+			}
+		}
 		if ok && (!policy.AllowedFileClass[fileClass] || !pathAllowedForMutationClass(path, policy)) {
 			fileClassStatus = "forbidden"
 			blockers = append(blockers, newBlocker("file_class_forbidden", "critical", "changed file is outside the mutation-class boundary", "changed_files", "move the change into the approved class scope or request a higher governed class"))
+		}
+		if mutationClass == "low_risk_code" {
+			switch lowRiskCodeFileRole(path, fileClass) {
+			case "source":
+				sourceFilesChanged++
+			case "test":
+				testFilesChanged++
+			}
+		}
+	}
+	if mutationClass == "low_risk_code" {
+		if sourceFilesChanged > policy.MaxSourceFiles {
+			fileClassStatus = "forbidden"
+			blockers = append(blockers, newBlocker("source_file_limit_exceeded", "high", "low_risk_code may change at most one source file", "changed_files", "reduce the source diff to one file or request a higher governed class"))
+		}
+		if testFilesChanged > policy.MaxTestFiles {
+			fileClassStatus = "forbidden"
+			blockers = append(blockers, newBlocker("test_file_limit_exceeded", "high", "low_risk_code may change at most one test file", "changed_files", "reduce the test diff to one file or request a higher governed class"))
+		}
+		if policy.RequireTestFileWithCode && sourceFilesChanged > 0 && testFilesChanged == 0 {
+			fileClassStatus = "forbidden"
+			blockers = append(blockers, newBlocker("test_change_required", "high", "low_risk_code source changes require a bounded test-file change", "changed_files", "add one matching test change or record a higher-class exception through policy"))
 		}
 	}
 
@@ -892,8 +930,13 @@ func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any
 		"mutation_class":            mutationClass,
 		"max_files":                 policy.MaxFiles,
 		"max_lines_changed":         policy.MaxLinesChanged,
+		"max_source_files":          policy.MaxSourceFiles,
+		"max_test_files":            policy.MaxTestFiles,
 		"files_changed":             filesChanged,
+		"source_files_changed":      sourceFilesChanged,
+		"test_files_changed":        testFilesChanged,
 		"lines_changed":             linesChanged,
+		"forbidden_path_classes":    uniqueStrings(forbiddenPathClasses),
 		"test_coverage_status":      coverageStatus,
 		"rollback_status":           rollbackStatus,
 		"diff_size_status":          diffStatus,
@@ -909,6 +952,39 @@ func classEvidenceStatus(status map[string]any, key string) string {
 		return stringField(evidence, "status")
 	}
 	return ""
+}
+
+func lowRiskCodeFileRole(path, fileClass string) string {
+	normalized := normalizeMutationPath(path)
+	if fileClass == "test" || strings.HasSuffix(normalized, "_test.go") || strings.Contains(normalized, "/tests/") {
+		return "test"
+	}
+	if fileClass == "code" {
+		return "source"
+	}
+	return ""
+}
+
+func lowRiskCodeForbiddenPathClass(path, changeType string) string {
+	normalized := normalizeMutationPath(path)
+	switch {
+	case strings.HasPrefix(normalized, ".github/"):
+		return "ci_workflows"
+	case strings.HasPrefix(normalized, "scripts/") || strings.HasSuffix(normalized, ".sh"):
+		return "scripts"
+	case strings.HasPrefix(normalized, "release/") || strings.HasPrefix(normalized, "releases/") || strings.HasPrefix(normalized, "docs/release/"):
+		return "release"
+	case strings.HasPrefix(normalized, "secrets/") || strings.Contains(normalized, "/secrets/") || strings.Contains(strings.ToLower(normalized), "secret") || strings.HasPrefix(filepath.Base(normalized), ".env"):
+		return "secrets"
+	case strings.HasPrefix(normalized, "config/") || strings.HasPrefix(normalized, "configs/") || strings.HasSuffix(normalized, ".yaml") || strings.HasSuffix(normalized, ".yml") || strings.HasSuffix(normalized, ".toml") || normalized == "go.mod" || normalized == "go.sum" || normalized == "Cargo.toml" || normalized == "Cargo.lock":
+		return "config_expansion"
+	case strings.HasPrefix(normalized, "providers/") || strings.Contains(normalized, "/provider/") || strings.Contains(normalized, "/providers/"):
+		return "provider_paths"
+	case changeType == "renamed" || changeType == "moved" || changeType == "deleted" || changeType == "delete":
+		return "broad_refactors"
+	default:
+		return ""
+	}
 }
 
 func pathAllowedForMutationClass(path string, policy mutationClassPolicy) bool {
@@ -1824,6 +1900,21 @@ func anyStrings(values []string) []any {
 	for _, value := range values {
 		out = append(out, value)
 	}
+	return out
+}
+
+func uniqueStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	sort.Strings(out)
 	return out
 }
 

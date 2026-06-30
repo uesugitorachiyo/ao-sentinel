@@ -54,13 +54,18 @@
       "path": "internal/atlas/validate.go",
       "file_class": "code",
       "change_type": "modified"
+    },
+    {
+      "path": "internal/atlas/validate_test.go",
+      "file_class": "test",
+      "change_type": "modified"
     }
   ],
   "diff_summary": {
-    "files_changed": 1,
-    "additions": 8,
-    "deletions": 2,
-    "total_lines_changed": 10
+    "files_changed": 2,
+    "additions": 18,
+    "deletions": 4,
+    "total_lines_changed": 22
   },
   "test_coverage": {
     "status": "passed",
@@ -70,7 +75,7 @@
   "rollback_proof": {
     "status": "ready",
     "mutation_class": "low_risk_code",
-    "scope": "internal/atlas/validate.go",
+    "scope": "internal/atlas/validate.go,internal/atlas/validate_test.go",
     "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
   },
   "evidence_freshness": {
