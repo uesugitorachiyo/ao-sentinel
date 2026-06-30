@@ -6,6 +6,8 @@
   "required": [
     "schema_version",
     "status",
+    "mutation_class",
+    "class_hold_verdict",
     "hold_required",
     "promoter_hold_required",
     "rollback_recommended",
@@ -24,6 +26,47 @@
   "properties": {
     "schema_version": { "const": "ao.sentinel.live-mutation-hold.v0.1" },
     "status": { "enum": ["clear", "hold"] },
+    "mutation_class": {
+      "enum": [
+        "docs_only_single_file",
+        "docs_only_multi_file",
+        "docs_config_only",
+        "test_only",
+        "low_risk_code",
+        "multi_repo_low_risk",
+        "complex_repo_mutation"
+      ]
+    },
+    "class_hold_verdict": {
+      "type": "object",
+      "required": [
+        "status",
+        "mutation_class",
+        "test_coverage_status",
+        "rollback_status",
+        "diff_size_status",
+        "file_class_status",
+        "evidence_freshness_status",
+        "ci_status",
+        "blockers"
+      ],
+      "properties": {
+        "status": { "enum": ["clear", "hold"] },
+        "mutation_class": { "type": "string" },
+        "max_files": { "type": "number" },
+        "max_lines_changed": { "type": "number" },
+        "files_changed": { "type": "number" },
+        "lines_changed": { "type": "number" },
+        "test_coverage_status": { "type": "string" },
+        "rollback_status": { "type": "string" },
+        "diff_size_status": { "type": "string" },
+        "file_class_status": { "type": "string" },
+        "evidence_freshness_status": { "type": "string" },
+        "ci_status": { "type": "string" },
+        "blockers": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
     "hold_required": { "type": "boolean" },
     "promoter_hold_required": { "type": "boolean" },
     "rollback_recommended": { "type": "boolean" },

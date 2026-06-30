@@ -96,18 +96,20 @@ automatic repair.
 ## Live Mutation Hold Required Fields
 
 Live mutation hold packets use `ao.sentinel.live-mutation-hold.v0.1` and must
-include `status`, `hold_required`, `promoter_hold_required`,
-`rollback_recommended`, `blockers`, `recommended_actions`, `source_artifacts`,
-and dry-run boundary fields. `operator_mode` must be `read_only`;
-`mutates_live_state`, `mutates_repositories`, `schedules_work`, `executes_work`,
-`approves_work`, `provider_calls_allowed`, and `release_or_publish_allowed`
-must be false.
+include `status`, `mutation_class`, `class_hold_verdict`, `hold_required`,
+`promoter_hold_required`, `rollback_recommended`, `blockers`,
+`recommended_actions`, `source_artifacts`, and dry-run boundary fields.
+`operator_mode` must be `read_only`; `mutates_live_state`,
+`mutates_repositories`, `schedules_work`, `executes_work`, `approves_work`,
+`provider_calls_allowed`, and `release_or_publish_allowed` must be false.
 
 The Sentinel live-mutation hold command consumes AO Command live-mutation
-status, Sentinel safety scan, and Sentinel regression diff evidence. For the
-first docs-only live class it holds when approval-gate, worktree-preparation,
-docs-only allowlist, rollback-rehearsal, operator kill-switch, verification,
-public-safety, or regression evidence is missing, failed, or not ready.
+status, Sentinel safety scan, and Sentinel regression diff evidence. It holds
+when approval-gate, worktree-preparation, docs-only allowlist,
+rollback-rehearsal, operator kill-switch, verification, public-safety,
+regression, test coverage, class-bound rollback proof, diff size, file class,
+evidence freshness, or CI status is missing, failed, stale, too broad, or not
+ready.
 
 ## Valid Fixtures
 
@@ -135,6 +137,12 @@ public-safety, or regression evidence is missing, failed, or not ready.
 - `examples/live-mutation/invalid/command-status.missing-approval.json`
 - `examples/live-mutation/invalid/command-status.missing-rollback.json`
 - `examples/live-mutation/invalid/command-status.missing-verification.json`
+- `examples/live-mutation/invalid/command-status.test-coverage-insufficient.json`
+- `examples/live-mutation/invalid/command-status.rollback-proof-missing.json`
+- `examples/live-mutation/invalid/command-status.diff-size-exceeded.json`
+- `examples/live-mutation/invalid/command-status.file-class-forbidden.json`
+- `examples/live-mutation/invalid/command-status.evidence-stale.json`
+- `examples/live-mutation/invalid/command-status.ci-status-insufficient.json`
 - `examples/live-mutation/invalid/command-status.forbidden-authority.json`
 - `examples/live-mutation/invalid/hold-missing-rollback.sentinel-live-mutation-hold.json`
 
@@ -153,4 +161,6 @@ public-safety, or regression evidence is missing, failed, or not ready.
 - Hold docs-only live-mutation readiness when approval-gate,
   worktree-preparation, docs-only allowlist, rollback-rehearsal, operator
   kill-switch, or verification evidence is missing.
+- Hold mutation-class readiness when test coverage, class-bound rollback proof,
+  diff size, file class, evidence freshness, or CI status is insufficient.
 - Reject output paths outside `tmp/`.

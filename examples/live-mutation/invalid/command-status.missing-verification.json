@@ -1,8 +1,9 @@
 {
   "schema_version": "ao.command.live-mutation-status.v0.1",
   "status": "ready",
-  "allowed_next_action": "request_first_tiny_live_mutation_class",
+  "allowed_next_action": "request_docs_only_multi_file_mutation_class",
   "first_failing_check": "",
+  "mutation_class": "docs_only_multi_file",
   "kill_switch_state": "armed",
   "artifacts": [
     {
@@ -41,6 +42,45 @@
       "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
     }
   ],
+  "changed_files": [
+    {
+      "path": "README.md",
+      "file_class": "docs",
+      "change_type": "modified"
+    },
+    {
+      "path": "docs/live-mutation.md",
+      "file_class": "docs",
+      "change_type": "modified"
+    }
+  ],
+  "diff_summary": {
+    "files_changed": 2,
+    "additions": 18,
+    "deletions": 6,
+    "total_lines_changed": 24
+  },
+  "test_coverage": {
+    "status": "not_required",
+    "reason": "docs-only mutation class"
+  },
+  "rollback_proof": {
+    "status": "ready",
+    "mutation_class": "docs_only_multi_file",
+    "scope": "README.md,docs/live-mutation.md",
+    "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "evidence_freshness": {
+    "status": "fresh",
+    "checked_at_utc": "2026-06-29T00:00:00Z",
+    "expires_at_utc": "2999-01-01T00:00:00Z"
+  },
+  "ci_status": {
+    "status": "passed",
+    "required": true,
+    "observed_at_utc": "2026-06-29T00:00:00Z",
+    "expires_at_utc": "2999-01-01T00:00:00Z"
+  },
   "operator_mode": "read_only",
   "mutates_live_state": false,
   "mutates_repositories": false,

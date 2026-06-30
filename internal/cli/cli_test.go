@@ -112,8 +112,9 @@ func TestLiveMutationHoldVerdict(t *testing.T) {
 	status := map[string]any{
 		"schema_version":       "ao.command.live-mutation-status.v0.1",
 		"status":               "ready",
-		"allowed_next_action":  "request_first_tiny_live_mutation_class",
+		"allowed_next_action":  "request_docs_only_multi_file_mutation_class",
 		"first_failing_check":  "",
+		"mutation_class":       "docs_only_multi_file",
 		"kill_switch_state":    "armed",
 		"operator_mode":        "read_only",
 		"mutates_live_state":   false,
@@ -129,6 +130,32 @@ func TestLiveMutationHoldVerdict(t *testing.T) {
 			map[string]any{"name": "rollback_rehearsal", "status": "ready", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
 			map[string]any{"name": "operator_kill_switch", "status": "armed", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
 			map[string]any{"name": "verification_evidence", "status": "passed", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
+		},
+		"changed_files": []any{
+			map[string]any{"path": "README.md", "file_class": "docs", "change_type": "modified"},
+			map[string]any{"path": "docs/live-mutation.md", "file_class": "docs", "change_type": "modified"},
+		},
+		"diff_summary": map[string]any{"files_changed": 2, "additions": 18, "deletions": 6, "total_lines_changed": 24},
+		"test_coverage": map[string]any{
+			"status": "not_required",
+			"reason": "docs-only mutation class",
+		},
+		"rollback_proof": map[string]any{
+			"status":         "ready",
+			"mutation_class": "docs_only_multi_file",
+			"scope":          "README.md,docs/live-mutation.md",
+			"sha256":         "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		},
+		"evidence_freshness": map[string]any{
+			"status":         "fresh",
+			"checked_at_utc": "2026-06-29T00:00:00Z",
+			"expires_at_utc": "2999-01-01T00:00:00Z",
+		},
+		"ci_status": map[string]any{
+			"status":          "passed",
+			"required":        true,
+			"observed_at_utc": "2026-06-29T00:00:00Z",
+			"expires_at_utc":  "2999-01-01T00:00:00Z",
 		},
 	}
 	safety := map[string]any{
@@ -157,8 +184,90 @@ func TestLiveMutationHoldVerdict(t *testing.T) {
 		clear["mutates_repositories"] != false {
 		t.Fatalf("unexpected clear live-mutation hold: %#v", clear)
 	}
+	if clear["mutation_class"] != "docs_only_multi_file" {
+		t.Fatalf("live-mutation hold should report mutation class: %#v", clear)
+	}
+	classVerdict, ok := clear["class_hold_verdict"].(map[string]any)
+	if !ok {
+		t.Fatalf("live-mutation hold missing class verdict: %#v", clear)
+	}
+	if classVerdict["status"] != "clear" ||
+		classVerdict["test_coverage_status"] != "not_required" ||
+		classVerdict["rollback_status"] != "ready" ||
+		classVerdict["diff_size_status"] != "passed" ||
+		classVerdict["file_class_status"] != "passed" ||
+		classVerdict["evidence_freshness_status"] != "fresh" ||
+		classVerdict["ci_status"] != "passed" {
+		t.Fatalf("unexpected class verdict: %#v", classVerdict)
+	}
 	if len(clear["source_artifacts"].([]any)) != 3 {
 		t.Fatalf("live-mutation hold should hash three source artifacts: %#v", clear["source_artifacts"])
+	}
+
+	classBlockers := []struct {
+		name string
+		edit func(map[string]any)
+		want string
+	}{
+		{
+			name: "test coverage insufficient",
+			edit: func(candidate map[string]any) {
+				candidate["mutation_class"] = "test_only"
+				candidate["changed_files"] = []any{map[string]any{"path": "internal/cli/cli_test.go", "file_class": "test", "change_type": "modified"}}
+				candidate["diff_summary"] = map[string]any{"files_changed": 1, "additions": 12, "deletions": 4, "total_lines_changed": 16}
+				candidate["test_coverage"] = map[string]any{"status": "missing"}
+				candidate["rollback_proof"] = map[string]any{"status": "ready", "mutation_class": "test_only", "scope": "internal/cli/cli_test.go", "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+			},
+			want: "test_coverage_insufficient",
+		},
+		{
+			name: "rollback proof missing",
+			edit: func(candidate map[string]any) {
+				delete(candidate, "rollback_proof")
+			},
+			want: "rollback_proof_missing",
+		},
+		{
+			name: "diff size exceeded",
+			edit: func(candidate map[string]any) {
+				candidate["diff_summary"] = map[string]any{"files_changed": 2, "additions": 900, "deletions": 200, "total_lines_changed": 1100}
+			},
+			want: "diff_size_exceeded",
+		},
+		{
+			name: "file class forbidden",
+			edit: func(candidate map[string]any) {
+				candidate["changed_files"] = []any{map[string]any{"path": "internal/cli/cli.go", "file_class": "code", "change_type": "modified"}}
+				candidate["diff_summary"] = map[string]any{"files_changed": 1, "additions": 4, "deletions": 1, "total_lines_changed": 5}
+			},
+			want: "file_class_forbidden",
+		},
+		{
+			name: "evidence stale",
+			edit: func(candidate map[string]any) {
+				candidate["evidence_freshness"] = map[string]any{"status": "stale", "checked_at_utc": "2026-06-29T00:00:00Z", "expires_at_utc": "2000-01-01T00:00:00Z"}
+			},
+			want: "evidence_stale",
+		},
+		{
+			name: "ci status insufficient",
+			edit: func(candidate map[string]any) {
+				candidate["ci_status"] = map[string]any{"status": "pending", "required": true, "observed_at_utc": "2026-06-29T00:00:00Z", "expires_at_utc": "2999-01-01T00:00:00Z"}
+			},
+			want: "ci_status_insufficient",
+		},
+	}
+	for _, tc := range classBlockers {
+		t.Run(tc.name, func(t *testing.T) {
+			candidate := cloneMap(t, status)
+			tc.edit(candidate)
+			path := filepath.Join(f.tmp, strings.ReplaceAll(tc.name, " ", "-")+".json")
+			assertRunOK(t, []string{"live-mutation", "hold", "--status", f.writeJSON(tc.name+".status.json", candidate), "--safety", f.writeJSON(tc.name+".safety.json", safety), "--regression", f.writeJSON(tc.name+".regression.json", regression), "--out", path})
+			verdict := readMap(t, path)
+			if verdict["status"] != "hold" || verdict["hold_required"] != true || verdict["first_failing_check"] != tc.want {
+				t.Fatalf("%s should hold with %s: %#v", tc.name, tc.want, verdict)
+			}
+		})
 	}
 
 	missingRollback := cloneMap(t, status)
@@ -392,8 +501,34 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 	assertRunOK(t, []string{"baseline", "validate", "--baseline", filepath.Join(root, "examples/baselines/valid/ao-stack.sentinel-baseline.json")})
 	assertRunOK(t, []string{"triage", "ci", "--signal", filepath.Join(root, "examples/triage/ci-contract-schema.sentinel-ci-signal.json"), "--out", filepath.Join(root, "tmp/checked-in-ci-triage.json")})
 	assertRunOK(t, []string{"security", "review", "--request", filepath.Join(root, "examples/security/valid/ao-forge.security-review-request.json"), "--out", filepath.Join(root, "tmp/checked-in-security-review.json")})
-	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/valid/command-status.ready.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold.json")})
+	checkedInClearPath := filepath.Join(root, "tmp/checked-in-live-mutation-hold.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/valid/command-status.ready.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", checkedInClearPath})
+	checkedInClear := readMap(t, checkedInClearPath)
+	if checkedInClear["status"] != "clear" || checkedInClear["mutation_class"] != "docs_only_multi_file" {
+		t.Fatalf("checked-in live mutation fixture should clear with class readback: %#v", checkedInClear)
+	}
 	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.missing-rollback.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold-blocked.json")})
+
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{"command-status.test-coverage-insufficient.json", "test_coverage_insufficient"},
+		{"command-status.rollback-proof-missing.json", "rollback_proof_missing"},
+		{"command-status.diff-size-exceeded.json", "diff_size_exceeded"},
+		{"command-status.file-class-forbidden.json", "file_class_forbidden"},
+		{"command-status.evidence-stale.json", "evidence_stale"},
+		{"command-status.ci-status-insufficient.json", "ci_status_insufficient"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			outPath := filepath.Join(root, "tmp", strings.TrimSuffix(tc.name, ".json")+".hold.json")
+			assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid", tc.name), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", outPath})
+			hold := readMap(t, outPath)
+			if hold["status"] != "hold" || hold["first_failing_check"] != tc.want {
+				t.Fatalf("fixture %s should hold with %s: %#v", tc.name, tc.want, hold)
+			}
+		})
+	}
 
 	cases := []struct {
 		name    string

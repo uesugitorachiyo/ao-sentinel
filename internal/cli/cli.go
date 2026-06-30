@@ -18,6 +18,79 @@ import (
 
 var allowedTargetKinds = setOf("active_stack", "candidate_stack", "component", "release_candidate")
 
+type mutationClassPolicy struct {
+	MaxFiles         int
+	MaxLinesChanged  int
+	AllowedPaths     []string
+	ForbiddenPaths   []string
+	AllowedFileClass map[string]bool
+	CoverageRequired bool
+	RequiresCI       bool
+}
+
+var mutationClassPolicies = map[string]mutationClassPolicy{
+	"docs_only_single_file": {
+		MaxFiles:         1,
+		MaxLinesChanged:  80,
+		AllowedPaths:     []string{"README.md", "docs/", "examples/"},
+		ForbiddenPaths:   []string{".github/", "cmd/", "internal/", "pkg/", "scripts/"},
+		AllowedFileClass: setOf("docs"),
+		RequiresCI:       true,
+	},
+	"docs_only_multi_file": {
+		MaxFiles:         2,
+		MaxLinesChanged:  160,
+		AllowedPaths:     []string{"README.md", "docs/", "examples/"},
+		ForbiddenPaths:   []string{".github/", "cmd/", "internal/", "pkg/", "scripts/"},
+		AllowedFileClass: setOf("docs"),
+		RequiresCI:       true,
+	},
+	"docs_config_only": {
+		MaxFiles:         3,
+		MaxLinesChanged:  200,
+		AllowedPaths:     []string{"README.md", "docs/", "examples/", ".github/"},
+		ForbiddenPaths:   []string{"cmd/", "internal/", "pkg/"},
+		AllowedFileClass: setOf("docs", "config"),
+		RequiresCI:       true,
+	},
+	"test_only": {
+		MaxFiles:         1,
+		MaxLinesChanged:  120,
+		AllowedPaths:     []string{"tests/", "test/", "testdata/", "examples/", "*_test.go", ".test.", ".spec."},
+		ForbiddenPaths:   []string{"cmd/", "internal/cli/cli.go", "pkg/"},
+		AllowedFileClass: setOf("test"),
+		CoverageRequired: true,
+		RequiresCI:       true,
+	},
+	"low_risk_code": {
+		MaxFiles:         2,
+		MaxLinesChanged:  160,
+		AllowedPaths:     []string{"cmd/", "internal/", "pkg/", "scripts/"},
+		ForbiddenPaths:   []string{".github/", "deploy/", "infra/", "terraform/", "secrets/"},
+		AllowedFileClass: setOf("code", "test"),
+		CoverageRequired: true,
+		RequiresCI:       true,
+	},
+	"multi_repo_low_risk": {
+		MaxFiles:         4,
+		MaxLinesChanged:  240,
+		AllowedPaths:     []string{"cmd/", "internal/", "pkg/", "scripts/", "tests/", "testdata/", "docs/"},
+		ForbiddenPaths:   []string{"deploy/", "infra/", "terraform/", "secrets/"},
+		AllowedFileClass: setOf("code", "test", "docs"),
+		CoverageRequired: true,
+		RequiresCI:       true,
+	},
+	"complex_repo_mutation": {
+		MaxFiles:         12,
+		MaxLinesChanged:  1200,
+		AllowedPaths:     []string{"cmd/", "internal/", "pkg/", "scripts/", "tests/", "testdata/", "docs/", "examples/"},
+		ForbiddenPaths:   []string{"secrets/"},
+		AllowedFileClass: setOf("code", "test", "docs", "config"),
+		CoverageRequired: true,
+		RequiresCI:       true,
+	},
+}
+
 type blocker struct {
 	BlockerID         string `json:"blocker_id"`
 	Severity          string `json:"severity"`
@@ -638,6 +711,8 @@ func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPa
 			blockers = append(blockers, newBlocker(required.name+"_not_ready", required.severity, "required docs-only live-mutation artifact is not ready", required.name, required.action))
 		}
 	}
+	classBlockers, classVerdict := evaluateMutationClassHold(status)
+	blockers = append(blockers, classBlockers...)
 
 	verdict := "clear"
 	holdRequired := false
@@ -661,6 +736,8 @@ func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPa
 	return map[string]any{
 		"schema_version":             "ao.sentinel.live-mutation-hold.v0.1",
 		"status":                     verdict,
+		"mutation_class":             stringField(status, "mutation_class"),
+		"class_hold_verdict":         classVerdict,
 		"hold_required":              holdRequired,
 		"promoter_hold_required":     holdRequired,
 		"rollback_recommended":       rollbackRecommended,
@@ -678,6 +755,181 @@ func evaluateLiveMutationHold(statusPath string, status map[string]any, safetyPa
 		"release_or_publish_allowed": false,
 		"generated_at_utc":           nowUTC(),
 	}, nil
+}
+
+func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any) {
+	blockers := []blocker{}
+	mutationClass := stringField(status, "mutation_class")
+	policy, ok := mutationClassPolicies[mutationClass]
+	if mutationClass == "" {
+		blockers = append(blockers, newBlocker("mutation_class_missing", "critical", "mutation class is missing from AO Command readback", "mutation_class", "provide Atlas classification before Sentinel can clear the hold"))
+	} else if !ok {
+		blockers = append(blockers, newBlocker("mutation_class_unknown", "critical", "mutation class is not recognized by Sentinel", "mutation_class", "use an Atlas-defined mutation class"))
+	}
+
+	coverageStatus := classEvidenceStatus(status, "test_coverage")
+	if ok {
+		if policy.CoverageRequired {
+			if coverageStatus != "passed" {
+				blockers = append(blockers, newBlocker("test_coverage_insufficient", "high", "test coverage evidence is missing or failed for this mutation class", "test_coverage", "provide passing class-appropriate test coverage evidence"))
+			}
+		} else if coverageStatus != "passed" && coverageStatus != "not_required" && coverageStatus != "not_applicable" {
+			blockers = append(blockers, newBlocker("test_coverage_insufficient", "high", "test coverage readback is missing or ambiguous for this mutation class", "test_coverage", "record passing or explicitly not-required coverage evidence"))
+		}
+	}
+
+	rollbackStatus := classEvidenceStatus(status, "rollback_proof")
+	rollbackProof, rollbackOK := status["rollback_proof"].(map[string]any)
+	if !rollbackOK {
+		blockers = append(blockers, newBlocker("rollback_proof_missing", "critical", "class-bound rollback proof is missing", "rollback_proof", "provide digest-bound rollback proof for the exact mutation class"))
+	} else {
+		if rollbackStatus != "ready" {
+			blockers = append(blockers, newBlocker("rollback_proof_not_ready", "critical", "class-bound rollback proof is not ready", "rollback_proof", "rehearse rollback and record ready proof"))
+		}
+		if stringField(rollbackProof, "sha256") == "" {
+			blockers = append(blockers, newBlocker("rollback_proof_digest_missing", "critical", "class-bound rollback proof is not digest-bound", "rollback_proof", "attach rollback proof digest"))
+		}
+		if mutationClass != "" && stringField(rollbackProof, "mutation_class") != "" && stringField(rollbackProof, "mutation_class") != mutationClass {
+			blockers = append(blockers, newBlocker("rollback_proof_class_mismatch", "critical", "rollback proof is bound to a different mutation class", "rollback_proof", "regenerate rollback proof for the requested class"))
+		}
+	}
+
+	diffSummary, diffOK := status["diff_summary"].(map[string]any)
+	diffStatus := "passed"
+	filesChanged := 0
+	linesChanged := 0
+	if !diffOK {
+		diffStatus = "missing"
+		blockers = append(blockers, newBlocker("diff_size_insufficient", "high", "diff summary is missing", "diff_summary", "provide bounded diff size evidence"))
+	} else {
+		filesChanged = int(numberField(diffSummary, "files_changed"))
+		linesChanged = int(numberField(diffSummary, "total_lines_changed"))
+		if linesChanged == 0 {
+			linesChanged = int(numberField(diffSummary, "additions") + numberField(diffSummary, "deletions"))
+		}
+		if ok && (filesChanged > policy.MaxFiles || linesChanged > policy.MaxLinesChanged) {
+			diffStatus = "exceeded"
+			blockers = append(blockers, newBlocker("diff_size_exceeded", "high", "diff size exceeds mutation-class limit", "diff_summary", "reduce diff size or request a higher governed class"))
+		}
+	}
+
+	fileClassStatus := "passed"
+	changedFiles := asAnySlice(status["changed_files"])
+	if len(changedFiles) == 0 {
+		fileClassStatus = "missing"
+		blockers = append(blockers, newBlocker("file_class_insufficient", "high", "changed file class evidence is missing", "changed_files", "provide per-file path and class evidence"))
+	}
+	if ok && len(changedFiles) > policy.MaxFiles {
+		fileClassStatus = "forbidden"
+		blockers = append(blockers, newBlocker("file_class_forbidden", "high", "changed file count exceeds mutation-class file limit", "changed_files", "reduce changed files or request a higher governed class"))
+	}
+	for _, item := range changedFiles {
+		file, okFile := item.(map[string]any)
+		if !okFile {
+			fileClassStatus = "missing"
+			blockers = append(blockers, newBlocker("file_class_insufficient", "high", "changed file entry is malformed", "changed_files", "provide structured per-file class evidence"))
+			continue
+		}
+		path := stringField(file, "path")
+		fileClass := stringField(file, "file_class")
+		if path == "" || fileClass == "" {
+			fileClassStatus = "missing"
+			blockers = append(blockers, newBlocker("file_class_insufficient", "high", "changed file path or class is missing", "changed_files", "provide per-file path and class evidence"))
+			continue
+		}
+		if ok && (!policy.AllowedFileClass[fileClass] || !pathAllowedForMutationClass(path, policy)) {
+			fileClassStatus = "forbidden"
+			blockers = append(blockers, newBlocker("file_class_forbidden", "critical", "changed file is outside the mutation-class boundary", "changed_files", "move the change into the approved class scope or request a higher governed class"))
+		}
+	}
+
+	freshnessStatus := classEvidenceStatus(status, "evidence_freshness")
+	freshness, freshnessOK := status["evidence_freshness"].(map[string]any)
+	if !freshnessOK || freshnessStatus != "fresh" || timestampExpired(stringField(freshness, "expires_at_utc")) {
+		freshnessStatus = "stale"
+		blockers = append(blockers, newBlocker("evidence_stale", "high", "class evidence is stale or lacks expiry proof", "evidence_freshness", "refresh class evidence and record a future expiry"))
+	}
+
+	ciStatus := classEvidenceStatus(status, "ci_status")
+	ci, ciOK := status["ci_status"].(map[string]any)
+	if policy.RequiresCI && (!ciOK || (ciStatus != "passed" && ciStatus != "success") || timestampExpired(stringField(ci, "expires_at_utc"))) {
+		ciStatus = firstNonEmpty(ciStatus, "missing")
+		blockers = append(blockers, newBlocker("ci_status_insufficient", "high", "CI evidence is missing, stale, pending, or failed", "ci_status", "provide fresh passing CI evidence before clearing the hold"))
+	}
+
+	statusText := "clear"
+	if len(blockers) > 0 {
+		statusText = "hold"
+	}
+	return blockers, map[string]any{
+		"status":                    statusText,
+		"mutation_class":            mutationClass,
+		"max_files":                 policy.MaxFiles,
+		"max_lines_changed":         policy.MaxLinesChanged,
+		"files_changed":             filesChanged,
+		"lines_changed":             linesChanged,
+		"test_coverage_status":      coverageStatus,
+		"rollback_status":           rollbackStatus,
+		"diff_size_status":          diffStatus,
+		"file_class_status":         fileClassStatus,
+		"evidence_freshness_status": freshnessStatus,
+		"ci_status":                 ciStatus,
+		"blockers":                  blockers,
+	}
+}
+
+func classEvidenceStatus(status map[string]any, key string) string {
+	if evidence, ok := status[key].(map[string]any); ok {
+		return stringField(evidence, "status")
+	}
+	return ""
+}
+
+func pathAllowedForMutationClass(path string, policy mutationClassPolicy) bool {
+	normalized := normalizeMutationPath(path)
+	for _, forbidden := range policy.ForbiddenPaths {
+		if pathMatchesBoundary(normalized, forbidden) {
+			return false
+		}
+	}
+	for _, allowed := range policy.AllowedPaths {
+		if pathMatchesBoundary(normalized, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeMutationPath(path string) string {
+	path = filepath.ToSlash(strings.TrimSpace(path))
+	if idx := strings.Index(path, ":"); idx > 0 && !strings.Contains(path[:idx], "/") {
+		path = path[idx+1:]
+	}
+	return strings.TrimPrefix(path, "./")
+}
+
+func pathMatchesBoundary(path, boundary string) bool {
+	if strings.HasPrefix(boundary, "*") {
+		return strings.HasSuffix(path, strings.TrimPrefix(boundary, "*"))
+	}
+	if strings.HasPrefix(boundary, ".") && strings.HasSuffix(boundary, ".") {
+		return strings.Contains(path, boundary)
+	}
+	if strings.HasSuffix(boundary, "/") {
+		return strings.HasPrefix(path, boundary)
+	}
+	return path == boundary || strings.HasPrefix(path, boundary+"/")
+}
+
+func timestampExpired(value string) bool {
+	if strings.TrimSpace(value) == "" {
+		return true
+	}
+	expires, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return true
+	}
+	return !time.Now().Before(expires)
 }
 
 func triageCISignal(signal map[string]any) (map[string]any, error) {

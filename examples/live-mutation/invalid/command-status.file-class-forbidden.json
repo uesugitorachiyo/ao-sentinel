@@ -7,6 +7,13 @@
   "kill_switch_state": "armed",
   "artifacts": [
     {
+      "name": "live_docs_approval_gate",
+      "path": "examples/live-mutation/live-docs-approval-gate.ready.json",
+      "schema_version": "ao.foundry.live-docs-approval-gate.v0.1",
+      "status": "ready",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
       "name": "live_docs_worktree_prepare",
       "path": "examples/live-mutation/live-docs-worktree-prepare.ready.json",
       "schema_version": "ao.foundry.live-docs-worktree-prepare.v0.1",
@@ -44,21 +51,16 @@
   ],
   "changed_files": [
     {
-      "path": "README.md",
-      "file_class": "docs",
-      "change_type": "modified"
-    },
-    {
-      "path": "docs/live-mutation.md",
-      "file_class": "docs",
+      "path": "internal/cli/cli.go",
+      "file_class": "code",
       "change_type": "modified"
     }
   ],
   "diff_summary": {
-    "files_changed": 2,
-    "additions": 18,
-    "deletions": 6,
-    "total_lines_changed": 24
+    "files_changed": 1,
+    "additions": 4,
+    "deletions": 1,
+    "total_lines_changed": 5
   },
   "test_coverage": {
     "status": "not_required",
@@ -67,7 +69,7 @@
   "rollback_proof": {
     "status": "ready",
     "mutation_class": "docs_only_multi_file",
-    "scope": "README.md,docs/live-mutation.md",
+    "scope": "internal/cli/cli.go",
     "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
   },
   "evidence_freshness": {

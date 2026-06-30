@@ -1,6 +1,22 @@
 {
   "schema_version": "ao.sentinel.live-mutation-hold.v0.1",
   "status": "hold",
+  "mutation_class": "docs_only_multi_file",
+  "class_hold_verdict": {
+    "status": "clear",
+    "mutation_class": "docs_only_multi_file",
+    "max_files": 2,
+    "max_lines_changed": 160,
+    "files_changed": 2,
+    "lines_changed": 24,
+    "test_coverage_status": "not_required",
+    "rollback_status": "ready",
+    "diff_size_status": "passed",
+    "file_class_status": "passed",
+    "evidence_freshness_status": "fresh",
+    "ci_status": "passed",
+    "blockers": []
+  },
   "hold_required": true,
   "promoter_hold_required": true,
   "rollback_recommended": true,

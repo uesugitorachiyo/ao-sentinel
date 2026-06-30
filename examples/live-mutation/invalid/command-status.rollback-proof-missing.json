@@ -7,6 +7,13 @@
   "kill_switch_state": "armed",
   "artifacts": [
     {
+      "name": "live_docs_approval_gate",
+      "path": "examples/live-mutation/live-docs-approval-gate.ready.json",
+      "schema_version": "ao.foundry.live-docs-approval-gate.v0.1",
+      "status": "ready",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
       "name": "live_docs_worktree_prepare",
       "path": "examples/live-mutation/live-docs-worktree-prepare.ready.json",
       "schema_version": "ao.foundry.live-docs-worktree-prepare.v0.1",
@@ -63,12 +70,6 @@
   "test_coverage": {
     "status": "not_required",
     "reason": "docs-only mutation class"
-  },
-  "rollback_proof": {
-    "status": "ready",
-    "mutation_class": "docs_only_multi_file",
-    "scope": "README.md,docs/live-mutation.md",
-    "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
   },
   "evidence_freshness": {
     "status": "fresh",
