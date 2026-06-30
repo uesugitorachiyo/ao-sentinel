@@ -525,6 +525,17 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 		testOnlyVerdict["test_coverage_status"] != "passed" {
 		t.Fatalf("checked-in test_only fixture should clear with passed coverage: %#v", checkedInTestOnlyClear)
 	}
+	checkedInLowRiskClearPath := filepath.Join(root, "tmp/checked-in-live-mutation-hold-low-risk-code.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/valid/command-status.low-risk-code-ready.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", checkedInLowRiskClearPath})
+	checkedInLowRiskClear := readMap(t, checkedInLowRiskClearPath)
+	lowRiskVerdict, ok := checkedInLowRiskClear["class_hold_verdict"].(map[string]any)
+	if checkedInLowRiskClear["status"] != "clear" ||
+		checkedInLowRiskClear["mutation_class"] != "low_risk_code" ||
+		!ok ||
+		lowRiskVerdict["test_coverage_status"] != "passed" ||
+		lowRiskVerdict["file_class_status"] != "passed" {
+		t.Fatalf("checked-in low_risk_code fixture should clear with coverage and file class readback: %#v", checkedInLowRiskClear)
+	}
 	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.missing-rollback.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold-blocked.json")})
 
 	for _, tc := range []struct {
