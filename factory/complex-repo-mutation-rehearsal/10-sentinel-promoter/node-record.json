@@ -1,0 +1,33 @@
+{
+  "accepted_evidence": [
+    "live_rehearsal:multi_repo_low_risk",
+    "safe_to_execute:true",
+    "node_id:complex-sentinel-promoter-readback"
+  ],
+  "authority_boundaries": {
+    "approves_work": false,
+    "credential_or_secret_access_allowed": false,
+    "direct_main_mutation_allowed": false,
+    "executes_providers": false,
+    "public_claim_broadening_allowed": false,
+    "release_or_publish_allowed": false,
+    "schedules_work": false
+  },
+  "class_state": {
+    "complex_repo_mutation_live_proven": "false",
+    "fully_unsupervised_complex_mutation": "denied",
+    "rsi": "denied"
+  },
+  "mutation_class": "complex_repo_mutation",
+  "node_class": "blocked node",
+  "node_id": "complex-sentinel-promoter-readback",
+  "rollback": {
+    "method": "governed revert pull request if rollback is required after merge",
+    "scope": "factory/complex-repo-mutation-rehearsal/10-sentinel-promoter"
+  },
+  "schema": "ao.atlas.complex-repo-mutation-node-record.v0.1",
+  "scope": "factory/complex-repo-mutation-rehearsal/10-sentinel-promoter",
+  "status": "completed",
+  "summary": "Eleventh bounded Sentinel hold and Promoter no-promotion readback node for the complex_repo_mutation governed rehearsal.",
+  "task_id": "complex-sentinel-promoter-readback-task"
+}
