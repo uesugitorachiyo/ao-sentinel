@@ -763,6 +763,16 @@ func liveMutationRequiredArtifacts(mutationClass string) []liveMutationRequiredA
 			{"verification_evidence", "passed", "high", "provide passing verification evidence for the test-only class"},
 		}
 	}
+	if mutationClass == "low_risk_code" {
+		return []liveMutationRequiredArtifact{
+			{"low_risk_code_class_gate", "ready", "critical", "provide exact-scope approved low-risk-code class gate evidence"},
+			{"test_only_success", "completed", "critical", "provide completed test-only live rehearsal evidence before low-risk-code dry-run"},
+			{"low_risk_code_allowlist", "ready", "critical", "provide low-risk-code allowlist evidence before dry-run can proceed"},
+			{"rollback_rehearsal", "ready", "critical", "provide digest-bound rollback_rehearsal evidence"},
+			{"operator_kill_switch", "armed", "critical", "arm the operator kill-switch"},
+			{"verification_evidence", "passed", "high", "provide passing verification evidence for the low-risk-code class"},
+		}
+	}
 	return []liveMutationRequiredArtifact{
 		{"live_docs_approval_gate", "ready", "critical", "provide exact-scope approved docs-only approval gate evidence"},
 		{"live_docs_worktree_prepare", "ready", "critical", "provide clean isolated docs-only worktree preparation evidence"},
