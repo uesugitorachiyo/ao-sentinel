@@ -1,7 +1,7 @@
 {
   "schema_version": "ao.command.live-mutation-status.v0.1",
   "status": "ready",
-  "allowed_next_action": "request_test_only_mutation_class",
+  "allowed_next_action": "request_test_only_live_rehearsal",
   "first_failing_check": "",
   "mutation_class": "test_only",
   "kill_switch_state": "armed",
@@ -29,7 +29,7 @@
     },
     {
       "name": "rollback_rehearsal",
-      "path": "examples/live-mutation/rollback-rehearsal.ready.json",
+      "path": "examples/live-mutation/rollback-rehearsal.test-only-ready.json",
       "schema_version": "ao.foundry.live-mutation-rollback-rehearsal.v0.1",
       "status": "ready",
       "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
@@ -63,7 +63,9 @@
     "total_lines_changed": 16
   },
   "test_coverage": {
-    "status": "missing"
+    "status": "passed",
+    "command": "go test ./internal/cli -run TestCheckedInExamplesAreCovered -count=1",
+    "mutation_class": "test_only"
   },
   "rollback_proof": {
     "status": "ready",
@@ -73,13 +75,13 @@
   },
   "evidence_freshness": {
     "status": "fresh",
-    "checked_at_utc": "2026-06-29T00:00:00Z",
+    "checked_at_utc": "2026-06-30T00:00:00Z",
     "expires_at_utc": "2999-01-01T00:00:00Z"
   },
   "ci_status": {
     "status": "passed",
     "required": true,
-    "observed_at_utc": "2026-06-29T00:00:00Z",
+    "observed_at_utc": "2026-06-30T00:00:00Z",
     "expires_at_utc": "2999-01-01T00:00:00Z"
   },
   "operator_mode": "read_only",
