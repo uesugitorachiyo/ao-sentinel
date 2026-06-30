@@ -779,6 +779,17 @@ func liveMutationRequiredArtifacts(mutationClass string) []liveMutationRequiredA
 			{"verification_evidence", "passed", "high", "provide passing verification evidence for the low-risk-code class"},
 		}
 	}
+	if mutationClass == "multi_repo_low_risk" {
+		return []liveMutationRequiredArtifact{
+			{"multi_repo_low_risk_class_gate", "ready", "critical", "provide exact-scope approved multi-repo class gate evidence"},
+			{"low_risk_code_success", "completed", "critical", "provide completed low-risk-code live rehearsal evidence before multi-repo dry-run"},
+			{"multi_repo_sequencing_plan", "ready", "critical", "provide serialized ordered merge plan evidence"},
+			{"per_repo_rollback", "ready", "critical", "provide ready rollback evidence for every planned repo"},
+			{"operator_kill_switch", "armed", "critical", "arm the operator kill-switch"},
+			{"ci_per_repo", "passed", "high", "provide passing CI evidence for every planned repo"},
+			{"verification_evidence", "passed", "high", "provide passing verification evidence for the multi-repo class"},
+		}
+	}
 	return []liveMutationRequiredArtifact{
 		{"live_docs_approval_gate", "ready", "critical", "provide exact-scope approved docs-only approval gate evidence"},
 		{"live_docs_worktree_prepare", "ready", "critical", "provide clean isolated docs-only worktree preparation evidence"},
@@ -920,12 +931,20 @@ func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any
 		ciStatus = firstNonEmpty(ciStatus, "missing")
 		blockers = append(blockers, newBlocker("ci_status_insufficient", "high", "CI evidence is missing, stale, pending, or failed", "ci_status", "provide fresh passing CI evidence before clearing the hold"))
 	}
+	multiRepoReadback := map[string]any{}
+	if mutationClass == "multi_repo_low_risk" {
+		multiRepoBlockers, readback := evaluateMultiRepoLowRiskHold(status)
+		blockers = append(blockers, multiRepoBlockers...)
+		for key, value := range readback {
+			multiRepoReadback[key] = value
+		}
+	}
 
 	statusText := "clear"
 	if len(blockers) > 0 {
 		statusText = "hold"
 	}
-	return blockers, map[string]any{
+	verdict := map[string]any{
 		"status":                    statusText,
 		"mutation_class":            mutationClass,
 		"max_files":                 policy.MaxFiles,
@@ -945,6 +964,79 @@ func evaluateMutationClassHold(status map[string]any) ([]blocker, map[string]any
 		"ci_status":                 ciStatus,
 		"blockers":                  blockers,
 	}
+	for key, value := range multiRepoReadback {
+		verdict[key] = value
+	}
+	return blockers, verdict
+}
+
+func evaluateMultiRepoLowRiskHold(status map[string]any) ([]blocker, map[string]any) {
+	blockers := []blocker{}
+	readback := map[string]any{
+		"multi_repo_dependency_status": "passed",
+		"per_repo_rollback_status":     "ready",
+		"per_repo_ci_status":           "passed",
+		"repo_state_status":            "fresh",
+	}
+	plan := asAnySlice(status["repo_execution_plan"])
+	if len(plan) < 2 {
+		readback["multi_repo_dependency_status"] = "missing"
+		blockers = append(blockers, newBlocker("multi_repo_dependency_missing", "critical", "multi-repo ordered merge plan is missing", "repo_execution_plan", "provide ordered per-repo PR dependency evidence"))
+		return blockers, readback
+	}
+	seen := map[string]bool{}
+	repos := []string{}
+	for index, item := range plan {
+		repoState, ok := item.(map[string]any)
+		if !ok {
+			readback["multi_repo_dependency_status"] = "missing"
+			blockers = append(blockers, newBlocker("multi_repo_dependency_missing", "critical", "multi-repo repo state is malformed", "repo_execution_plan", "provide structured per-repo dependency evidence"))
+			continue
+		}
+		repo := stringField(repoState, "repo")
+		dependencies := stringSliceFromAny(repoState["depends_on"])
+		mergeAfter := stringSliceFromAny(repoState["merge_after"])
+		if repo == "" || int(numberField(repoState, "order")) != index+1 || stringField(repoState, "planned_pr") == "" || stringField(repoState, "status") != "ready" || !equalStringSlices(dependencies, mergeAfter) {
+			readback["multi_repo_dependency_status"] = "missing"
+			blockers = append(blockers, newBlocker("multi_repo_dependency_missing", "critical", "multi-repo dependency order is incomplete", "repo_execution_plan", "repair ordered merge plan before promotion"))
+		}
+		for _, dependency := range dependencies {
+			if !seen[dependency] {
+				readback["multi_repo_dependency_status"] = "missing"
+				blockers = append(blockers, newBlocker("multi_repo_dependency_missing", "critical", "multi-repo dependency does not point to an earlier repo", "repo_execution_plan", "serialize repo PRs in dependency order"))
+				break
+			}
+		}
+		if stringField(repoState, "rollback_status") != "ready" {
+			readback["per_repo_rollback_status"] = "missing"
+			blockers = append(blockers, newBlocker("multi_repo_rollback_incomplete", "critical", "multi-repo rollback is incomplete", "repo_execution_plan", "provide ready rollback for every planned repo"))
+		}
+		if !statusPassed(stringField(repoState, "ci_status")) {
+			readback["per_repo_ci_status"] = "missing"
+			blockers = append(blockers, newBlocker("multi_repo_ci_incomplete", "high", "multi-repo CI evidence is incomplete", "repo_execution_plan", "provide passing CI for every planned repo"))
+		}
+		if stringField(repoState, "repo_state_status") != "clean_synced" || timestampExpired(stringField(repoState, "repo_state_expires_at_utc")) {
+			readback["repo_state_status"] = "stale"
+			blockers = append(blockers, newBlocker("multi_repo_repo_state_stale", "high", "multi-repo repo state evidence is stale", "repo_execution_plan", "refresh clean synced repo-state evidence"))
+		}
+		seen[repo] = true
+		repos = append(repos, repo)
+	}
+	rollbackByRepo := mapByRepo(status["per_repo_rollback"])
+	ciByRepo := mapByRepo(status["per_repo_ci"])
+	for _, repo := range repos {
+		rollback := rollbackByRepo[repo]
+		if rollback == nil || stringField(rollback, "status") != "ready" || len(asAnySlice(rollback["rollback_scope"])) == 0 {
+			readback["per_repo_rollback_status"] = "missing"
+			blockers = append(blockers, newBlocker("multi_repo_rollback_incomplete", "critical", "multi-repo rollback is incomplete", "per_repo_rollback", "provide ready rollback scope for every planned repo"))
+		}
+		ci := ciByRepo[repo]
+		if ci == nil || !boolField(ci, "required") || !statusPassed(stringField(ci, "status")) {
+			readback["per_repo_ci_status"] = "missing"
+			blockers = append(blockers, newBlocker("multi_repo_ci_incomplete", "high", "multi-repo CI evidence is incomplete", "per_repo_ci", "provide passing required CI for every planned repo"))
+		}
+	}
+	return blockers, readback
 }
 
 func classEvidenceStatus(status map[string]any, key string) string {
@@ -1032,6 +1124,48 @@ func timestampExpired(value string) bool {
 		return true
 	}
 	return !time.Now().Before(expires)
+}
+
+func stringSliceFromAny(value any) []string {
+	values := []string{}
+	for _, item := range asAnySlice(value) {
+		text, ok := item.(string)
+		if ok {
+			values = append(values, text)
+		}
+	}
+	return values
+}
+
+func mapByRepo(value any) map[string]map[string]any {
+	byRepo := map[string]map[string]any{}
+	for _, item := range asAnySlice(value) {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		repo := stringField(entry, "repo")
+		if repo != "" {
+			byRepo[repo] = entry
+		}
+	}
+	return byRepo
+}
+
+func equalStringSlices(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
+}
+
+func statusPassed(status string) bool {
+	return status == "passed" || status == "success"
 }
 
 func triageCISignal(signal map[string]any) (map[string]any, error) {
