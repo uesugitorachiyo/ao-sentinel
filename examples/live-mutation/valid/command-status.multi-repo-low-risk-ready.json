@@ -1,0 +1,51 @@
+{
+  "schema_version": "ao.command.live-mutation-status.v0.1",
+  "status": "ready",
+  "allowed_next_action": "request_multi_repo_low_risk_dry_run",
+  "first_failing_check": "",
+  "mutation_class": "multi_repo_low_risk",
+  "kill_switch_state": "armed",
+  "artifacts": [
+    { "name": "multi_repo_low_risk_class_gate", "path": "examples/live-mutation/multi-repo-class-gate.ready.json", "schema_version": "ao.foundry.class-gate.v0.1", "status": "ready", "sha256": "1111111111111111111111111111111111111111111111111111111111111111" },
+    { "name": "low_risk_code_success", "path": "examples/live-mutation/low-risk-code-live-rehearsal.success.json", "schema_version": "ao.atlas.live-rehearsal-evidence.v0.1", "status": "completed", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" },
+    { "name": "multi_repo_sequencing_plan", "path": "examples/live-mutation/multi-repo-sequencing-plan.ready.json", "schema_version": "ao.foundry.multi-repo-low-risk-plan.v0.1", "status": "ready", "sha256": "3333333333333333333333333333333333333333333333333333333333333333" },
+    { "name": "per_repo_rollback", "path": "examples/live-mutation/per-repo-rollback.ready.json", "schema_version": "ao.foundry.mutation-class-rollback.v0.1", "status": "ready", "sha256": "4444444444444444444444444444444444444444444444444444444444444444" },
+    { "name": "operator_kill_switch", "path": "examples/live-mutation/kill-switch.armed.json", "schema_version": "ao.command.live-mutation-kill-switch.v0.1", "status": "armed", "sha256": "5555555555555555555555555555555555555555555555555555555555555555" },
+    { "name": "ci_per_repo", "path": "examples/live-mutation/ci-per-repo.passed.json", "schema_version": "ao.foundry.ci-readiness.v0.1", "status": "passed", "sha256": "6666666666666666666666666666666666666666666666666666666666666666" },
+    { "name": "verification_evidence", "path": "examples/live-mutation/verification-evidence.multi-repo-passed.json", "schema_version": "ao.foundry.multi-repo-verification-evidence.v0.1", "status": "passed", "sha256": "7777777777777777777777777777777777777777777777777777777777777777" }
+  ],
+  "changed_files": [
+    { "repo": "ao-atlas", "path": "internal/atlas/validate.go", "file_class": "code", "change_type": "modified" },
+    { "repo": "ao-foundry", "path": "internal/cli/cli.go", "file_class": "code", "change_type": "modified" },
+    { "repo": "ao-command", "path": "internal/cli/cli_test.go", "file_class": "test", "change_type": "modified" }
+  ],
+  "diff_summary": { "files_changed": 3, "additions": 30, "deletions": 12, "total_lines_changed": 42 },
+  "test_coverage": { "status": "passed", "command": "go test ./...", "mutation_class": "multi_repo_low_risk" },
+  "rollback_proof": { "status": "ready", "mutation_class": "multi_repo_low_risk", "scope": "ao-atlas,ao-foundry,ao-command", "sha256": "8888888888888888888888888888888888888888888888888888888888888888" },
+  "repo_execution_plan": [
+    { "repo": "ao-atlas", "order": 1, "planned_pr": "dry-run-pr:ao-atlas", "status": "ready", "depends_on": [], "merge_after": [], "rollback_status": "ready", "ci_status": "passed", "repo_state_status": "clean_synced", "repo_state_expires_at_utc": "2999-01-01T00:00:00Z" },
+    { "repo": "ao-foundry", "order": 2, "planned_pr": "dry-run-pr:ao-foundry", "status": "ready", "depends_on": ["ao-atlas"], "merge_after": ["ao-atlas"], "rollback_status": "ready", "ci_status": "passed", "repo_state_status": "clean_synced", "repo_state_expires_at_utc": "2999-01-01T00:00:00Z" },
+    { "repo": "ao-command", "order": 3, "planned_pr": "dry-run-pr:ao-command", "status": "ready", "depends_on": ["ao-foundry"], "merge_after": ["ao-foundry"], "rollback_status": "ready", "ci_status": "passed", "repo_state_status": "clean_synced", "repo_state_expires_at_utc": "2999-01-01T00:00:00Z" }
+  ],
+  "per_repo_rollback": [
+    { "repo": "ao-atlas", "status": "ready", "rollback_scope": ["repo:ao-atlas:internal/**"] },
+    { "repo": "ao-foundry", "status": "ready", "rollback_scope": ["repo:ao-foundry:internal/**"] },
+    { "repo": "ao-command", "status": "ready", "rollback_scope": ["repo:ao-command:internal/**"] }
+  ],
+  "per_repo_ci": [
+    { "repo": "ao-atlas", "status": "passed", "required": true },
+    { "repo": "ao-foundry", "status": "passed", "required": true },
+    { "repo": "ao-command", "status": "passed", "required": true }
+  ],
+  "evidence_freshness": { "status": "fresh", "checked_at_utc": "2026-06-30T00:00:00Z", "expires_at_utc": "2999-01-01T00:00:00Z" },
+  "ci_status": { "status": "passed", "required": true, "observed_at_utc": "2026-06-30T00:00:00Z", "expires_at_utc": "2999-01-01T00:00:00Z" },
+  "operator_mode": "read_only",
+  "mutates_live_state": false,
+  "mutates_repositories": false,
+  "schedules_work": false,
+  "executes_work": false,
+  "approves_work": false,
+  "calls_providers": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false
+}

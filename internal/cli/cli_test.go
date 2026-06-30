@@ -538,6 +538,19 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 		lowRiskVerdict["test_files_changed"] != float64(1) {
 		t.Fatalf("checked-in low_risk_code fixture should clear with coverage and file class readback: %#v", checkedInLowRiskClear)
 	}
+	checkedInMultiRepoClearPath := filepath.Join(root, "tmp/checked-in-live-mutation-hold-multi-repo-low-risk.json")
+	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/valid/command-status.multi-repo-low-risk-ready.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", checkedInMultiRepoClearPath})
+	checkedInMultiRepoClear := readMap(t, checkedInMultiRepoClearPath)
+	multiRepoVerdict, ok := checkedInMultiRepoClear["class_hold_verdict"].(map[string]any)
+	if checkedInMultiRepoClear["status"] != "clear" ||
+		checkedInMultiRepoClear["mutation_class"] != "multi_repo_low_risk" ||
+		!ok ||
+		multiRepoVerdict["multi_repo_dependency_status"] != "passed" ||
+		multiRepoVerdict["per_repo_rollback_status"] != "ready" ||
+		multiRepoVerdict["per_repo_ci_status"] != "passed" ||
+		multiRepoVerdict["repo_state_status"] != "fresh" {
+		t.Fatalf("checked-in multi_repo_low_risk fixture should clear with per-repo readback: %#v", checkedInMultiRepoClear)
+	}
 	assertRunOK(t, []string{"live-mutation", "hold", "--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.missing-rollback.json"), "--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"), "--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"), "--out", filepath.Join(root, "tmp/checked-in-live-mutation-hold-blocked.json")})
 
 	for _, tc := range []struct {
@@ -553,6 +566,11 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 		{"command-status.low-risk-code.missing-test-change.json", "test_change_required"},
 		{"command-status.low-risk-code.source-limit-exceeded.json", "source_file_limit_exceeded"},
 		{"command-status.low-risk-code.forbidden-script.json", "forbidden_path_class_touched"},
+		{"command-status.multi-repo-low-risk.missing-dependency.json", "multi_repo_dependency_missing"},
+		{"command-status.multi-repo-low-risk.stale-repo-state.json", "multi_repo_repo_state_stale"},
+		{"command-status.multi-repo-low-risk.partial-rollback.json", "multi_repo_rollback_incomplete"},
+		{"command-status.multi-repo-low-risk.missing-ci.json", "multi_repo_ci_incomplete"},
+		{"command-status.multi-repo-low-risk.kill-switch-disarmed.json", "kill_switch_not_armed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outPath := filepath.Join(root, "tmp", strings.TrimSuffix(tc.name, ".json")+".hold.json")

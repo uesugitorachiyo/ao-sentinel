@@ -163,4 +163,7 @@ ready.
   kill-switch, or verification evidence is missing.
 - Hold mutation-class readiness when test coverage, class-bound rollback proof,
   diff size, file class, evidence freshness, or CI status is insufficient.
+- Hold `multi_repo_low_risk` readiness when ordered PR dependencies,
+  per-repo rollback, per-repo CI, fresh repo-state evidence, or the operator
+  kill switch is insufficient.
 - Reject output paths outside `tmp/`.
