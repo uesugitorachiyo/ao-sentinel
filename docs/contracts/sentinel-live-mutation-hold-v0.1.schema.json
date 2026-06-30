@@ -55,8 +55,16 @@
         "mutation_class": { "type": "string" },
         "max_files": { "type": "number" },
         "max_lines_changed": { "type": "number" },
+        "max_source_files": { "type": "number" },
+        "max_test_files": { "type": "number" },
         "files_changed": { "type": "number" },
+        "source_files_changed": { "type": "number" },
+        "test_files_changed": { "type": "number" },
         "lines_changed": { "type": "number" },
+        "forbidden_path_classes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "test_coverage_status": { "type": "string" },
         "rollback_status": { "type": "string" },
         "diff_size_status": { "type": "string" },

@@ -49,6 +49,12 @@ authority, schedule work, mutate repositories, call providers, publish,
 release, or override Covenant, Foundry, Forge, Promoter, or operator approval
 gates.
 
+For `low_risk_code`, Sentinel also enforces the bounded patch packet shape:
+at most one source file and one test file, a test change for source changes,
+and no scripts, CI workflows, release paths, secrets, config expansion,
+provider paths, or broad refactors. The resulting hold remains observer-only
+and does not execute or approve repository mutation.
+
 ## SDD Files
 
 | File | Purpose |
