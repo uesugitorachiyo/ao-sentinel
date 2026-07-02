@@ -103,3 +103,19 @@ because runspecs may include local machine paths.
 ## License
 
 AO Sentinel is licensed under `Apache-2.0`. See `LICENSE`.
+
+## Bounded Sandboxed Self-Change Application Readback
+
+`public_safe_bounded_sandboxed_self_change_applications_non_readback_four_attempts`
+is proven from AO Foundry PR #220, commit
+`eff03edd62ba32af57defc71a7f3b800f320b8d3`, with tracked public evidence under
+`docs/evidence/unrestricted-self-modification-bounded-sandbox-applications/`.
+Sentinel result:
+`clear_bounded_sandbox_non_readback_applications_hold_unrestricted_self_modification`.
+The approved public wording is exactly: "AO has public-safe bounded sandboxed
+self-change application evidence across four non-readback exact-scope evidence
+tasks under sandbox containment gates; unrestricted self-modification, hidden
+instruction mutation, policy-changing autonomy, and forbidden surface expansion
+remain denied." The highest proven live class is
+`public_safe_bounded_sandboxed_self_change_applications_non_readback_four_attempts`;
+the next denied class is `unrestricted_self_modification`.
