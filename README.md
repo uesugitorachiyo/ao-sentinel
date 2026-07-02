@@ -57,6 +57,29 @@ and no scripts, CI workflows, release paths, secrets, config expansion,
 provider paths, or broad refactors. The resulting hold remains observer-only
 and does not execute or approve repository mutation.
 
+## Repeated Bounded Reversible Self-Change Applications Hold
+
+Sentinel clears only the narrow repeated bounded applications public-risk
+wording and keeps unrestricted self-modification on hold. The proven class is
+`public_safe_repeated_bounded_reversible_self_change_applications_four_attempts`,
+from AO Foundry PR #219, commit
+`88b52ce1ca9e8679cccdc64fe21c2b63340076b5`, with tracked public evidence under
+`docs/evidence/unrestricted-self-modification-repeated-bounded-applications/`.
+The Sentinel result is
+`clear_repeated_bounded_applications_hold_unrestricted_self_modification`.
+The approved public wording is exactly: "AO has public-safe repeated bounded
+reversible self-change application evidence across four exact-scope
+support/readback attempts under sandbox containment gates; unrestricted
+self-modification, hidden instruction mutation, policy-changing autonomy, and
+forbidden surface expansion remain denied."
+
+This hold clearance does not grant execution authority, schedule work, mutate
+repositories, call providers, publish, release, or override Covenant, Foundry,
+Forge, Promoter, or operator approval gates. It does not prove unrestricted
+self-modification, hidden instruction mutation, policy-changing autonomy,
+forbidden surface expansion, direct-main mutation, concurrent mutation, or any
+unrestricted RSI claim.
+
 ## SDD Files
 
 | File | Purpose |
