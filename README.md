@@ -269,3 +269,24 @@ calls, credential use, hidden instruction mutation, policy-changing autonomy,
 forbidden surface expansion, release/deploy/publish/upload/tag authority,
 dependency updates, direct-main mutation, concurrent mutation, broad public
 claims, and unrestricted RSI remain denied.
+
+## Sandbox Bypass Resistance Hold
+
+Sentinel clears only the narrow sandbox bypass resistance evidence wording and
+keeps unrestricted self-modification and bypass authority on hold. The proven
+class is `public_safe_sandbox_bypass_resistance_evidence_four_attempts`, from
+AO Foundry PR #235, commit `322bd8b2ce3b6f8134196d33b0f605e0fe68f938`, with
+tracked public evidence under
+`docs/evidence/unrestricted-self-modification-sandbox-bypass-resistance/`.
+The Sentinel result is
+`clear_sandbox_bypass_resistance_hold_unrestricted_self_modification_and_bypass_authority`.
+The approved public wording is exactly: "AO has public-safe sandbox containment bypass resistance evidence across four exact-scope reversible negative-control attempts under contained external-command self-change gates; unrestricted self-modification, sandbox containment bypass authority, provider calls, credential use, hidden instruction mutation, policy-changing autonomy, forbidden surface expansion, release/deploy/publish/upload/tag authority, dependency updates, direct-main mutation, concurrent mutation, and broad public claims remain denied."
+
+This hold clearance does not grant execution authority, sandbox containment
+bypass authority, real sandbox escape, provider calls, credential use, hidden
+instruction mutation, policy-changing autonomy, forbidden surface expansion,
+release/deploy/publish/upload/tag authority, dependency updates, direct-main
+mutation, concurrent mutation, broad public claims, unrestricted RSI, or
+unrestricted self-modification. The highest proven live class is
+`public_safe_sandbox_bypass_resistance_evidence_four_attempts`; the next denied
+class is `unrestricted_self_modification`.
