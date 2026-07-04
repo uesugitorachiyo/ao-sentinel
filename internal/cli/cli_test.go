@@ -127,6 +127,31 @@ func TestGatewayIntentPublicRiskFixtureScansClear(t *testing.T) {
 	}
 }
 
+func TestGatewayIntentAuthorityWideningFixtureFails(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "gateway-intent-authority-widening-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "gateway-intent-authority-widening.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("gateway intent authority-widening fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("gateway intent authority-widening fixture missing findings: %#v", packet)
+	}
+	first, ok := findings[0].(map[string]any)
+	if !ok || first["detector"] != "gateway_intent_authority_widening" {
+		t.Fatalf("unexpected gateway intent finding: %#v", findings)
+	}
+}
+
 func TestSchedulerRecoveryPublicRiskFixtureScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
