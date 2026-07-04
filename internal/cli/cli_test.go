@@ -297,6 +297,26 @@ func TestGatewayFreshnessStaleLanguageFixtureFails(t *testing.T) {
 	}
 }
 
+func TestGatewayFreshnessPublicRiskFixtureScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "gateway-freshness-public-risk-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "gateway-freshness-public-risk.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("gateway freshness fixture should scan clear without authority widening: %#v", packet)
+	}
+}
+
 func TestLedgerCompactionPublicRiskFixtureScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
