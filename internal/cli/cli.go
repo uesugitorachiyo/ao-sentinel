@@ -1905,6 +1905,7 @@ func detectors() []struct {
 		{"local_absolute_path", "high", "local absolute path detected", regexp.MustCompile(localPathPattern)},
 		{"forbidden_action_command", "high", "forbidden action command detected", regexp.MustCompile(`(?i)\b(git push|git tag|gh release|npm publish|twine upload|docker push|kubectl apply|terraform apply)\b`)},
 		{"scheduler_recovery_authority_widening", "high", "scheduler recovery authority-widening claim detected", regexp.MustCompile(`(?i)scheduler recovery\s+(executes|schedules|mutates repositories?)\b`)},
+		{"ledger_compaction_authority_widening", "high", "ledger compaction authority-widening claim detected", regexp.MustCompile(`(?i)ledger compaction\s+(executes|schedules|mutates repositories?)\b`)},
 	}
 }
 
