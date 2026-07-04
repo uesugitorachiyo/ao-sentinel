@@ -1904,6 +1904,7 @@ func detectors() []struct {
 		{"password_assignment", "critical", "password assignment pattern detected", regexp.MustCompile(`(?i)\b(password|passwd|secret)\s*[:=]`)},
 		{"local_absolute_path", "high", "local absolute path detected", regexp.MustCompile(localPathPattern)},
 		{"forbidden_action_command", "high", "forbidden action command detected", regexp.MustCompile(`(?i)\b(git push|git tag|gh release|npm publish|twine upload|docker push|kubectl apply|terraform apply)\b`)},
+		{"gateway_public_doc_authority_variant", "high", "gateway public-doc authority variant detected", regexp.MustCompile(`(?i)\b(the\s+)?gateway\s+(approves?|executes?|mutates repositories?|executes repository changes?)\b`)},
 		{"gateway_intent_authority_widening", "high", "gateway intent authority-widening claim detected", regexp.MustCompile(`(?i)\b(telegram|a2a|gateway intents?)\s+(executes?|approves?|mutates repositories?)\b`)},
 		{"scheduler_recovery_authority_widening", "high", "scheduler recovery authority-widening claim detected", regexp.MustCompile(`(?i)scheduler recovery\s+(executes|schedules|mutates repositories?)\b`)},
 		{"scheduler_wakeup_authority_widening", "high", "scheduler wakeup authority-widening claim detected", regexp.MustCompile(`(?i)\b(codex-cron|scheduler wakeups?)\s+(executes?|approves?|schedules repository mutation|mutates repositories?)\b`)},

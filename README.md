@@ -54,6 +54,9 @@ gates.
 Scheduler wording is also scanned for authority drift. Public text that says
 the scheduler approves, executes, or mutates repository work is rejected;
 codex-cron and scheduler wakeups remain wakeup substrate/readback only.
+Gateway wording is scanned the same way. Public text that says Telegram, A2A,
+or a gateway approves, executes, or mutates repository work is rejected because
+gateway surfaces remain intent/readback only.
 
 For `low_risk_code`, Sentinel also enforces the bounded patch packet shape:
 at most one source file and one test file, a test change for source changes,

@@ -247,6 +247,31 @@ func TestSchedulerPublicDocAuthorityVariantFixtureFails(t *testing.T) {
 	}
 }
 
+func TestGatewayPublicDocAuthorityVariantFixtureFails(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "gateway-public-doc-authority-variant-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "gateway-public-doc-authority-variant.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("gateway public-doc authority variant fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("gateway public-doc authority variant fixture missing findings: %#v", packet)
+	}
+	first, ok := findings[0].(map[string]any)
+	if !ok || first["detector"] != "gateway_public_doc_authority_variant" {
+		t.Fatalf("unexpected gateway public-doc authority finding: %#v", findings)
+	}
+}
+
 func TestLedgerCompactionPublicRiskFixtureScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
