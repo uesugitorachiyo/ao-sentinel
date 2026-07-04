@@ -197,6 +197,31 @@ func TestSchedulerRecoveryAuthorityWideningFixtureFails(t *testing.T) {
 	}
 }
 
+func TestSchedulerWakeupAuthorityWideningFixtureFails(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "scheduler-wakeup-authority-widening-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "scheduler-wakeup-authority-widening.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("scheduler wakeup authority-widening fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("scheduler wakeup authority-widening fixture missing findings: %#v", packet)
+	}
+	first, ok := findings[0].(map[string]any)
+	if !ok || first["detector"] != "scheduler_wakeup_authority_widening" {
+		t.Fatalf("unexpected scheduler wakeup finding: %#v", findings)
+	}
+}
+
 func TestLedgerCompactionPublicRiskFixtureScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
