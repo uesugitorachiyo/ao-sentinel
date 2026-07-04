@@ -147,6 +147,31 @@ func TestSchedulerRecoveryPublicRiskFixtureScansClear(t *testing.T) {
 	}
 }
 
+func TestSchedulerRecoveryAuthorityWideningFixtureFails(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "scheduler-recovery-authority-widening-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "scheduler-recovery-authority-widening.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("scheduler recovery authority-widening fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("scheduler recovery authority-widening fixture missing findings: %#v", packet)
+	}
+	first, ok := findings[0].(map[string]any)
+	if !ok || first["detector"] != "scheduler_recovery_authority_widening" {
+		t.Fatalf("unexpected scheduler recovery finding: %#v", findings)
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
