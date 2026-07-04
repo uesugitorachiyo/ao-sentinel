@@ -51,6 +51,10 @@ authority, schedule work, mutate repositories, call providers, publish,
 release, or override Covenant, Foundry, Forge, Promoter, or operator approval
 gates.
 
+Scheduler wording is also scanned for authority drift. Public text that says
+the scheduler approves, executes, or mutates repository work is rejected;
+codex-cron and scheduler wakeups remain wakeup substrate/readback only.
+
 For `low_risk_code`, Sentinel also enforces the bounded patch packet shape:
 at most one source file and one test file, a test change for source changes,
 and no scripts, CI workflows, release paths, secrets, config expansion,
