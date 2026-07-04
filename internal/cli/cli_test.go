@@ -172,6 +172,51 @@ func TestSchedulerRecoveryAuthorityWideningFixtureFails(t *testing.T) {
 	}
 }
 
+func TestLedgerCompactionPublicRiskFixtureScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "ledger-compaction-public-risk-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "ledger-compaction-public-risk.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("ledger compaction fixture should scan clear without authority widening: %#v", packet)
+	}
+}
+
+func TestLedgerCompactionAuthorityWideningFixtureFails(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "ledger-compaction-authority-widening-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "ledger-compaction-authority-widening.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("ledger compaction authority-widening fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("ledger compaction authority-widening fixture missing findings: %#v", packet)
+	}
+	first, ok := findings[0].(map[string]any)
+	if !ok || first["detector"] != "ledger_compaction_authority_widening" {
+		t.Fatalf("unexpected ledger compaction finding: %#v", findings)
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
