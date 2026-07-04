@@ -1907,6 +1907,7 @@ func detectors() []struct {
 		{"gateway_intent_authority_widening", "high", "gateway intent authority-widening claim detected", regexp.MustCompile(`(?i)\b(telegram|a2a|gateway intents?)\s+(executes?|approves?|mutates repositories?)\b`)},
 		{"scheduler_recovery_authority_widening", "high", "scheduler recovery authority-widening claim detected", regexp.MustCompile(`(?i)scheduler recovery\s+(executes|schedules|mutates repositories?)\b`)},
 		{"scheduler_wakeup_authority_widening", "high", "scheduler wakeup authority-widening claim detected", regexp.MustCompile(`(?i)\b(codex-cron|scheduler wakeups?)\s+(executes?|approves?|schedules repository mutation|mutates repositories?)\b`)},
+		{"scheduler_public_doc_authority_variant", "high", "scheduler public-doc authority variant detected", regexp.MustCompile(`(?i)\b(the\s+)?scheduler\s+(approves?|executes?|mutates repositories?|executes repository changes?)\b`)},
 		{"ledger_compaction_authority_widening", "high", "ledger compaction authority-widening claim detected", regexp.MustCompile(`(?i)ledger compaction\s+(executes|schedules|mutates repositories?)\b`)},
 	}
 }
