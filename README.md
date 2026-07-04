@@ -44,7 +44,7 @@ regression, test coverage, class-bound rollback proof, diff size, file class,
 evidence freshness, or CI status is missing, failed, stale, too broad, or not
 digest-bound. For `multi_repo_low_risk`, the class verdict also holds on
 missing ordered dependencies, incomplete per-repo rollback, incomplete per-repo
-CI, stale repo-state evidence, or a disarmed kill switch. Sentinel may
+CI, stale repo-state evidence, stale gateway readback language, or a disarmed kill switch. Sentinel may
 remove its hold only when those inputs prove the exact approved scope is
 intact, but that verdict is still not live-mutation approval. It does not grant
 authority, schedule work, mutate repositories, call providers, publish,
@@ -55,8 +55,8 @@ Scheduler wording is also scanned for authority drift. Public text that says
 the scheduler approves, executes, or mutates repository work is rejected;
 codex-cron and scheduler wakeups remain wakeup substrate/readback only.
 Gateway wording is scanned the same way. Public text that says Telegram, A2A,
-or a gateway approves, executes, or mutates repository work is rejected because
-gateway surfaces remain intent/readback only.
+or a gateway approves, executes, mutates repository work, or has readbacks that are always fresh is rejected because
+gateway surfaces remain intent/readback only and freshness can be fresh, stale, or unknown.
 
 For `low_risk_code`, Sentinel also enforces the bounded patch packet shape:
 at most one source file and one test file, a test change for source changes,
