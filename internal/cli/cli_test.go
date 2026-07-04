@@ -272,6 +272,31 @@ func TestGatewayPublicDocAuthorityVariantFixtureFails(t *testing.T) {
 	}
 }
 
+func TestGatewayFreshnessStaleLanguageFixtureFails(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "gateway-freshness-stale-language-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "gateway-freshness-stale-language.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("gateway freshness stale-language fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("gateway freshness stale-language fixture missing findings: %#v", packet)
+	}
+	first, ok := findings[0].(map[string]any)
+	if !ok || first["detector"] != "gateway_freshness_stale_language" {
+		t.Fatalf("unexpected gateway freshness finding: %#v", findings)
+	}
+}
+
 func TestLedgerCompactionPublicRiskFixtureScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
