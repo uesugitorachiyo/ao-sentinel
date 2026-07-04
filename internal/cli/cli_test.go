@@ -127,6 +127,26 @@ func TestGatewayIntentPublicRiskFixtureScansClear(t *testing.T) {
 	}
 }
 
+func TestSchedulerRecoveryPublicRiskFixtureScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "scheduler-recovery-public-risk-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "scheduler-recovery-public-risk.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("scheduler recovery fixture should scan clear without authority widening: %#v", packet)
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
