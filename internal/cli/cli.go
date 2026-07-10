@@ -1948,8 +1948,16 @@ func flagValue(args []string, name string) (string, error) {
 
 func requireTmpOutput(path string) error {
 	clean := filepath.Clean(path)
-	for _, part := range strings.Split(clean, string(filepath.Separator)) {
+	parts := strings.Split(clean, string(filepath.Separator))
+	firstRealPart := 0
+	for firstRealPart < len(parts) && (parts[firstRealPart] == "" || strings.HasSuffix(parts[firstRealPart], ":")) {
+		firstRealPart++
+	}
+	for i, part := range parts {
 		if part == "tmp" {
+			if filepath.IsAbs(clean) && i == firstRealPart {
+				continue
+			}
 			return nil
 		}
 	}
