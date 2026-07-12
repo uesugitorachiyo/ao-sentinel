@@ -1,0 +1,30 @@
+{
+  "schema_version": "ao.sentinel.evidence-freshness-warning-panel.v0.1",
+  "status": "warning",
+  "source_status_fixture": "examples/live-mutation/invalid/command-status.evidence-stale.json",
+  "source_hold_schema": "ao.sentinel.live-mutation-hold.v0.1",
+  "mutation_class": "docs_only_multi_file",
+  "first_failing_check": "evidence_stale",
+  "evidence_freshness_status": "stale",
+  "warnings": [
+    {
+      "warning_id": "evidence_stale",
+      "severity": "high",
+      "source": "evidence_freshness",
+      "label": "Evidence stale",
+      "operator_readback": "Class evidence is stale or lacks expiry proof.",
+      "recommended_action": "refresh class evidence and record a future expiry"
+    }
+  ],
+  "blocks_promotion": true,
+  "hold_required": true,
+  "promoter_hold_required": true,
+  "operator_mode": "read_only",
+  "mutates_live_state": false,
+  "mutates_repositories": false,
+  "schedules_work": false,
+  "executes_work": false,
+  "approves_work": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false
+}

@@ -870,6 +870,49 @@ func TestCheckedInExamplesAreCovered(t *testing.T) {
 	}
 }
 
+func TestEvidenceFreshnessWarningPanelFixtureMatchesStaleHoldReadback(t *testing.T) {
+	root := filepath.Join("..", "..")
+	outPath := filepath.Join(root, "tmp", "checked-in-evidence-stale-panel-hold.json")
+	assertRunOK(t, []string{
+		"live-mutation", "hold",
+		"--status", filepath.Join(root, "examples/live-mutation/invalid/command-status.evidence-stale.json"),
+		"--safety", filepath.Join(root, "examples/safety/valid/readme-safety.sentinel-scan.json"),
+		"--regression", filepath.Join(root, "examples/regression/valid/ao-stack-regression-diff.json"),
+		"--out", outPath,
+	})
+	hold := readMap(t, outPath)
+	panel := readMap(t, filepath.Join(root, "examples/live-mutation/valid/evidence-freshness-warning-panel.json"))
+	warnings, ok := panel["warnings"].([]any)
+	if !ok || len(warnings) != 1 {
+		t.Fatalf("warning panel should contain exactly one warning: %#v", panel)
+	}
+	warning, ok := warnings[0].(map[string]any)
+	if !ok {
+		t.Fatalf("warning panel warning is malformed: %#v", warnings[0])
+	}
+	classVerdict, ok := hold["class_hold_verdict"].(map[string]any)
+	if panel["schema_version"] != "ao.sentinel.evidence-freshness-warning-panel.v0.1" ||
+		panel["status"] != "warning" ||
+		panel["first_failing_check"] != hold["first_failing_check"] ||
+		panel["evidence_freshness_status"] != classVerdict["evidence_freshness_status"] ||
+		panel["hold_required"] != hold["hold_required"] ||
+		panel["promoter_hold_required"] != hold["promoter_hold_required"] ||
+		panel["mutates_live_state"] != false ||
+		panel["executes_work"] != false ||
+		panel["approves_work"] != false ||
+		panel["provider_calls_allowed"] != false ||
+		panel["release_or_publish_allowed"] != false ||
+		!ok {
+		t.Fatalf("warning panel does not match stale hold readback:\npanel=%#v\nhold=%#v", panel, hold)
+	}
+	if warning["warning_id"] != "evidence_stale" ||
+		warning["severity"] != "high" ||
+		warning["source"] != "evidence_freshness" ||
+		warning["recommended_action"] != "refresh class evidence and record a future expiry" {
+		t.Fatalf("warning panel should expose the stale evidence operator action: %#v", warning)
+	}
+}
+
 type fixtureSet struct {
 	root          string
 	tmp           string
