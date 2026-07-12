@@ -1,0 +1,28 @@
+{
+  "schema_version": "ao.sentinel.safety-lint-profile.v0.1",
+  "profile": "public-beta",
+  "status": "planning_only",
+  "source_recommendation_rank": 38,
+  "source_recommendation_task": "Add public beta wording lint profile",
+  "safety_gate": "planning_only_no_provider_no_release",
+  "extends": "default",
+  "required_detectors": [
+    "public_beta_authority_overclaim",
+    "forbidden_action_command",
+    "github_token",
+    "private_key",
+    "password_assignment"
+  ],
+  "must_deny_claims": [
+    "automatic provider-backed mission execution",
+    "public beta release publishing authority",
+    "unrestricted RSI promotion",
+    "credential or direct-main mutation authority"
+  ],
+  "no_promotion_requested": true,
+  "provider_calls_allowed": false,
+  "credential_use_allowed": false,
+  "release_or_publish_allowed": false,
+  "claims_authority_advance": false,
+  "rsi_remains_denied": true
+}
