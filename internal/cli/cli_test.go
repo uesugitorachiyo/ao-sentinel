@@ -362,6 +362,91 @@ func TestLedgerCompactionAuthorityWideningFixtureFails(t *testing.T) {
 	}
 }
 
+func TestPublicBetaWordingLintProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "public-beta-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "public-beta",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "public-beta-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["profile"] != "public-beta" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("public beta wording fixture should scan clear: %#v", packet)
+	}
+}
+
+func TestPublicBetaWordingLintProfileFailsAuthorityOverclaim(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "public-beta-authority-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "public-beta",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "public-beta-authority-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["profile"] != "public-beta" || packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("public beta authority overclaim fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("public beta authority overclaim fixture missing findings: %#v", packet)
+	}
+	seen := map[string]bool{}
+	for _, item := range findings {
+		finding, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("unexpected public beta finding shape: %#v", item)
+		}
+		detector, _ := finding["detector"].(string)
+		seen[detector] = true
+	}
+	if !seen["public_beta_authority_overclaim"] {
+		t.Fatalf("public beta overclaim detector did not fire: %#v", findings)
+	}
+}
+
+func TestPublicBetaWordingLintProfileFixtureIsPlanningOnly(t *testing.T) {
+	profile := readMap(t, filepath.Join("..", "..", "examples", "safety", "valid", "public-beta-wording-lint-profile.json"))
+	if profile["schema_version"] != "ao.sentinel.safety-lint-profile.v0.1" ||
+		profile["profile"] != "public-beta" ||
+		profile["status"] != "planning_only" ||
+		profile["source_recommendation_rank"].(float64) != 38 ||
+		profile["safety_gate"] != "planning_only_no_provider_no_release" ||
+		profile["no_promotion_requested"] != true ||
+		profile["provider_calls_allowed"] != false ||
+		profile["credential_use_allowed"] != false ||
+		profile["release_or_publish_allowed"] != false ||
+		profile["claims_authority_advance"] != false ||
+		profile["rsi_remains_denied"] != true {
+		t.Fatalf("public beta lint profile lost planning-only boundary: %#v", profile)
+	}
+	detectors, ok := profile["required_detectors"].([]any)
+	if !ok || len(detectors) == 0 {
+		t.Fatalf("public beta lint profile missing required detectors: %#v", profile)
+	}
+	seen := map[string]bool{}
+	for _, item := range detectors {
+		detector, _ := item.(string)
+		seen[detector] = true
+	}
+	if !seen["public_beta_authority_overclaim"] {
+		t.Fatalf("public beta lint profile does not require overclaim detector: %#v", detectors)
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{

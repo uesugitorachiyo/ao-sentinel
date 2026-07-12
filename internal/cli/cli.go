@@ -155,7 +155,7 @@ func printHelp(w io.Writer) {
 Usage:
   sentinel target validate --target <json>
   sentinel baseline validate --baseline <json>
-  sentinel safety scan --path <path> --out <json>
+  sentinel safety scan --path <path> --out <json> [--profile default|public-beta]
   sentinel run regression --suite <json> --out <json>
   sentinel compare regression --baseline <json> --run <json> --out <json>
   sentinel monitor evaluate --target <json> --baseline <json> --safety <json> --regression <json> --out <json>
@@ -220,10 +220,17 @@ func runSafety(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	profile, err := optionalFlagValue(args[1:], "--profile", "default")
+	if err != nil {
+		return err
+	}
+	if profile != "default" && profile != "public-beta" {
+		return fmt.Errorf("unknown safety profile %q", profile)
+	}
 	if err := requireTmpOutput(out); err != nil {
 		return err
 	}
-	result, err := safetyScan(path)
+	result, err := safetyScanWithProfile(path, profile)
 	if err != nil {
 		return err
 	}
@@ -1722,6 +1729,10 @@ func renderReport(verdict, incident map[string]any) string {
 }
 
 func safetyScan(path string) (map[string]any, error) {
+	return safetyScanWithProfile(path, "default")
+}
+
+func safetyScanWithProfile(path string, profile string) (map[string]any, error) {
 	findings := []map[string]any{}
 	info, err := os.Stat(path)
 	if err != nil {
@@ -1733,7 +1744,7 @@ func safetyScan(path string) (map[string]any, error) {
 			return err
 		}
 		for lineNo, line := range strings.Split(string(body), "\n") {
-			for _, detector := range detectors() {
+			for _, detector := range detectors(profile) {
 				if detector.re.MatchString(line) {
 					findings = append(findings, map[string]any{
 						"detector": detector.name,
@@ -1777,6 +1788,7 @@ func safetyScan(path string) (map[string]any, error) {
 	return map[string]any{
 		"schema_version":     "ao.sentinel.safety-scan.v0.1",
 		"status":             status,
+		"profile":            profile,
 		"path":               filepath.ToSlash(path),
 		"findings_count":     len(findings),
 		"findings":           findings,
@@ -1884,14 +1896,14 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func detectors() []struct {
+func detectors(profile string) []struct {
 	name     string
 	severity string
 	summary  string
 	re       *regexp.Regexp
 } {
 	localPathPattern := `(/` + `Users/[^ \n]+|/` + `home/[^ \n]+|C:\\` + `Users\\[^ \n]+)`
-	return []struct {
+	items := []struct {
 		name     string
 		severity string
 		summary  string
@@ -1912,6 +1924,15 @@ func detectors() []struct {
 		{"scheduler_public_doc_authority_variant", "high", "scheduler public-doc authority variant detected", regexp.MustCompile(`(?i)\b(the\s+)?scheduler\s+(approves?|executes?|mutates repositories?|executes repository changes?)\b`)},
 		{"ledger_compaction_authority_widening", "high", "ledger compaction authority-widening claim detected", regexp.MustCompile(`(?i)ledger compaction\s+(executes|schedules|mutates repositories?)\b`)},
 	}
+	if profile == "public-beta" {
+		items = append(items, struct {
+			name     string
+			severity string
+			summary  string
+			re       *regexp.Regexp
+		}{"public_beta_authority_overclaim", "high", "public beta authority overclaim detected", regexp.MustCompile(`(?i)\b(public\s+beta|beta)\b[^.\n]*(automatically\s+runs|provider-backed|publishes?\s+releases?|promotes?\s+unrestricted\s+RSI|grants?\s+(provider|credential|release|mutation)\s+authority)`)})
+	}
+	return items
 }
 
 func readJSONMap(path string) (map[string]any, error) {
@@ -1944,6 +1965,18 @@ func flagValue(args []string, name string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("missing %s", name)
+}
+
+func optionalFlagValue(args []string, name string, fallback string) (string, error) {
+	for i, arg := range args {
+		if arg == name {
+			if i+1 >= len(args) {
+				return "", fmt.Errorf("missing %s value", name)
+			}
+			return args[i+1], nil
+		}
+	}
+	return fallback, nil
 }
 
 func requireTmpOutput(path string) error {
