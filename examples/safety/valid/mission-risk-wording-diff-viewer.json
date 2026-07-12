@@ -1,0 +1,47 @@
+{
+  "schema_version": "ao.sentinel.mission-risk-wording-diff-viewer.v0.1",
+  "status": "ready",
+  "source_recommendation_rank": 26,
+  "source_recommendation_task": "Add mission risk wording diff viewer fixture",
+  "owner_repo": "ao-sentinel",
+  "safety_gate": "planning_only_no_provider_no_release",
+  "source_fixture": "examples/safety/invalid/gateway-freshness-stale-language.md",
+  "before": {
+    "label": "Stale mission-risk wording",
+    "unsafe_text_redacted": true,
+    "raw_text_sha256": "c6df5a5d7b60a73bbf531a92e632a6228d8029fcacee5712f4e7b757db187d08",
+    "redaction_reason": "fixture contains stale freshness and authority-overclaim language"
+  },
+  "after": {
+    "label": "Approved mission-risk wording",
+    "approved_public_safe_wording": "Mission risk readbacks classify freshness as fresh, stale, or unknown and do not grant execution, approval, provider, credential, release, or repository mutation authority.",
+    "replacement_ref": "examples/safety/valid/gateway-freshness-public-risk.md"
+  },
+  "findings": [
+    {
+      "detector": "gateway_freshness_stale_language",
+      "severity": "high",
+      "raw_match_redacted": true,
+      "replacement_ref": "after.approved_public_safe_wording"
+    },
+    {
+      "detector": "mission_risk_authority_overclaim",
+      "severity": "high",
+      "raw_match_redacted": true,
+      "replacement_ref": "after.approved_public_safe_wording"
+    }
+  ],
+  "viewer_controls": {
+    "show_raw_unsafe_text": false,
+    "show_redacted_diff_only": true,
+    "show_detector_ids": true,
+    "show_replacement_text": true
+  },
+  "no_promotion_requested": true,
+  "provider_calls_allowed": false,
+  "credential_use_allowed": false,
+  "release_or_publish_allowed": false,
+  "direct_main_mutation": false,
+  "claims_authority_advance": false,
+  "rsi_remains_denied": true
+}
