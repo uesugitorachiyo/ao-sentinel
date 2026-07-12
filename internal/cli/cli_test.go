@@ -913,6 +913,57 @@ func TestEvidenceFreshnessWarningPanelFixtureMatchesStaleHoldReadback(t *testing
 	}
 }
 
+func TestMissionRiskWordingDiffViewerFixturePreservesSafetyBoundary(t *testing.T) {
+	root := filepath.Join("..", "..")
+	viewer := readMap(t, filepath.Join(root, "examples", "safety", "valid", "mission-risk-wording-diff-viewer.json"))
+	if viewer["schema_version"] != "ao.sentinel.mission-risk-wording-diff-viewer.v0.1" ||
+		viewer["status"] != "ready" ||
+		viewer["source_recommendation_rank"] != float64(26) ||
+		viewer["source_recommendation_task"] != "Add mission risk wording diff viewer fixture" ||
+		viewer["no_promotion_requested"] != true ||
+		viewer["provider_calls_allowed"] != false ||
+		viewer["credential_use_allowed"] != false ||
+		viewer["release_or_publish_allowed"] != false ||
+		viewer["direct_main_mutation"] != false ||
+		viewer["claims_authority_advance"] != false ||
+		viewer["rsi_remains_denied"] != true {
+		t.Fatalf("mission risk wording diff viewer lost governance boundary: %#v", viewer)
+	}
+	before, ok := viewer["before"].(map[string]any)
+	if !ok || before["unsafe_text_redacted"] != true || before["raw_text_sha256"] == "" {
+		t.Fatalf("viewer should redact stale source wording and pin its digest: %#v", before)
+	}
+	after, ok := viewer["after"].(map[string]any)
+	if !ok || after["approved_public_safe_wording"] == "" {
+		t.Fatalf("viewer should expose approved safe replacement wording: %#v", after)
+	}
+	findings, ok := viewer["findings"].([]any)
+	if !ok || len(findings) < 2 {
+		t.Fatalf("viewer should carry detector findings: %#v", viewer["findings"])
+	}
+	seen := map[string]bool{}
+	for _, item := range findings {
+		finding, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("finding is not an object: %#v", item)
+		}
+		detector, _ := finding["detector"].(string)
+		seen[detector] = true
+		if finding["severity"] == "" || finding["replacement_ref"] == "" || finding["raw_match_redacted"] != true {
+			t.Fatalf("finding should be redacted and replacement-bound: %#v", finding)
+		}
+	}
+	for _, detector := range []string{"gateway_freshness_stale_language", "mission_risk_authority_overclaim"} {
+		if !seen[detector] {
+			t.Fatalf("viewer missing detector %q: %#v", detector, findings)
+		}
+	}
+	controls, ok := viewer["viewer_controls"].(map[string]any)
+	if !ok || controls["show_raw_unsafe_text"] != false || controls["show_redacted_diff_only"] != true {
+		t.Fatalf("viewer controls should default to redacted diff only: %#v", controls)
+	}
+}
+
 type fixtureSet struct {
 	root          string
 	tmp           string
