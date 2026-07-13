@@ -10,6 +10,43 @@ AO Sentinel v0.1 is specified as a local-first Go CLI. Default execution is
 fixture and dry-run only. It does not run live providers, push, tag, release,
 upload, deploy, mutate sibling repositories, or write live control-plane state.
 
+## Role
+
+AO Sentinel monitors public-safety wording, evidence freshness, regressions,
+and risk signals. It emits observer verdicts and holds, not authority.
+
+## Maturity
+
+**Alpha.** Local scanning and fixture verdicts are `implemented` and
+`executable-tested`. Continuous runtime monitoring is `fixture-only`. The
+external-beta workflow is `clean-room-rehearsed`.
+External beta has not launched.
+
+## Install
+
+```sh
+go build -o bin/sentinel ./cmd/sentinel
+```
+
+## Quickstart
+
+```sh
+bin/sentinel --help
+```
+
+## Safety
+
+No promotion is requested. Sentinel cannot approve execution, promote a candidate, or activate a change.
+It does not prove unrestricted RSI. Unrestricted RSI remains denied.
+
+## External Beta
+
+Canonical topology and status live in
+[AO Architecture](https://github.com/uesugitorachiyo/ao-architecture).
+See the
+[AO Sentinel component page](https://github.com/uesugitorachiyo/ao-architecture/blob/main/components/ao-sentinel.md)
+for the external-beta boundary.
+
 ## Product Gate Commands
 
 ```sh
