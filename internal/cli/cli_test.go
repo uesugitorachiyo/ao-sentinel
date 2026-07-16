@@ -877,6 +877,78 @@ func TestAdoptionMonth1GateReadinessWordingProfileFixtureDefinesBoundaries(t *te
 	}
 }
 
+func TestAdoptionMonth2OperatorDrillWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "adoption-month2-operator-drill-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "adoption-month2-operator-drill",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "adoption-month2-operator-drill-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["profile"] != "adoption-month2-operator-drill" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("Month 2 adoption wording should pass: %#v", packet)
+	}
+}
+
+func TestAdoptionMonth2OperatorDrillWordingProfileFailsOverclaimsAndMissingBoundaries(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "adoption-month2-operator-drill-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "adoption-month2-operator-drill",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "adoption-month2-operator-drill-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	findings := packet["findings"].([]any)
+	seen := map[string]bool{}
+	for _, finding := range findings {
+		entry := finding.(map[string]any)
+		seen[entry["detector"].(string)] = true
+	}
+	for _, want := range []string{
+		"adoption_month2_gate_activation_overclaim",
+		"adoption_month2_rsi_activation_overclaim",
+		"adoption_month2_external_beta_overclaim",
+		"adoption_month2_promotion_overclaim",
+		"adoption_month2_provider_pilot_overclaim",
+		"adoption_month2_release_overclaim",
+		"adoption_month2_missing_current_pair_boundary",
+		"adoption_month2_missing_gate_ready_not_active_boundary",
+		"adoption_month2_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 2 adoption wording profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
+func TestAdoptionMonth2OperatorDrillWordingProfileFixtureDefinesBoundaries(t *testing.T) {
+	profile := readMap(t, filepath.Join("..", "..", "examples", "safety", "valid", "adoption-month2-operator-drill-wording-lint-profile.json"))
+	if profile["schema_version"] != "ao.sentinel.safety-lint-profile.v0.1" ||
+		profile["profile"] != "adoption-month2-operator-drill" ||
+		profile["status"] != "operator_adoption_drill_only" ||
+		profile["safety_gate"] != "operator_adoption_no_gate_activation_no_provider_no_release_no_promotion_no_rsi" ||
+		profile["gate_activation_allowed"] != false ||
+		profile["rsi_remains_denied"] != true ||
+		profile["release_or_publish_allowed"] != false ||
+		profile["promotion_requested"] != false ||
+		profile["external_beta_launched"] != false {
+		t.Fatalf("Month 2 adoption lint profile lost boundary: %#v", profile)
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
