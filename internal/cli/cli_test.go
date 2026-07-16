@@ -988,6 +988,61 @@ func TestGitHubIssueMonth2AuthenticityWordingProfileFailsOverclaims(t *testing.T
 	}
 }
 
+func TestGitHubIssueMonth3RepairWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "github-issue-month3-repair-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "github-issue-month3-repair",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "github-issue-month3-repair-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["profile"] != "github-issue-month3-repair" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("GitHub issue Month 3 repair wording should pass: %#v", packet)
+	}
+}
+
+func TestGitHubIssueMonth3RepairWordingProfileFailsOverclaims(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "github-issue-month3-repair-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "github-issue-month3-repair",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "github-issue-month3-repair-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	findings := packet["findings"].([]any)
+	seen := map[string]bool{}
+	for _, finding := range findings {
+		entry := finding.(map[string]any)
+		seen[entry["detector"].(string)] = true
+	}
+	for _, want := range []string{
+		"github_issue_false_fix_overclaim",
+		"github_issue_rollback_overclaim",
+		"github_issue_replay_overclaim",
+		"github_issue_feature_pr_merge_overclaim",
+		"github_issue_provider_pilot_overclaim",
+		"github_issue_release_overclaim",
+		"github_issue_rsi_overclaim",
+	} {
+		if !seen[want] {
+			t.Fatalf("GitHub issue Month 3 repair profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
 func TestAdoptionMonth2OperatorDrillWordingProfileScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
