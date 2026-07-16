@@ -693,6 +693,116 @@ func TestMonth5OperatorWorkflowWordingProfileFixtureDefinesBoundaries(t *testing
 	}
 }
 
+func TestMonth6ReleaseReadinessWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "month6-release-readiness-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "month6-release-readiness",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "month6-release-readiness-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["profile"] != "month6-release-readiness" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("Month 6 release-readiness wording fixture should scan clear: %#v", packet)
+	}
+}
+
+func TestMonth6ReleaseReadinessWordingProfileFailsOverclaimsAndMissingBoundaries(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "month6-release-readiness-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "month6-release-readiness",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "month6-release-readiness-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["profile"] != "month6-release-readiness" || packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("Month 6 release-readiness overclaim fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("Month 6 release-readiness fixture missing findings: %#v", packet)
+	}
+	seen := map[string]bool{}
+	for _, item := range findings {
+		finding, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("unexpected Month 6 finding shape: %#v", item)
+		}
+		detector, _ := finding["detector"].(string)
+		seen[detector] = true
+	}
+	for _, want := range []string{
+		"month6_rsi_activation_overclaim",
+		"month6_live_self_modification_overclaim",
+		"month6_external_beta_overclaim",
+		"month6_promotion_overclaim",
+		"month6_provider_pilot_overclaim",
+		"month6_release_overclaim",
+		"month6_missing_no_release_boundary",
+		"month6_missing_current_pair_boundary",
+		"month6_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 6 wording profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
+func TestMonth6ReleaseReadinessWordingProfileFixtureDefinesBoundaries(t *testing.T) {
+	profile := readMap(t, filepath.Join("..", "..", "examples", "safety", "valid", "month6-release-readiness-wording-lint-profile.json"))
+	if profile["schema_version"] != "ao.sentinel.safety-lint-profile.v0.1" ||
+		profile["profile"] != "month6-release-readiness" ||
+		profile["status"] != "no_release_readiness_only" ||
+		profile["safety_gate"] != "no_release_no_provider_no_external_beta_no_promotion_no_rsi" ||
+		profile["no_release_decision_required"] != true ||
+		profile["current_pair_required"] != true ||
+		profile["rsi_remains_denied"] != true ||
+		profile["live_self_modification_allowed"] != false ||
+		profile["provider_calls_allowed"] != false ||
+		profile["release_or_publish_allowed"] != false ||
+		profile["promotion_requested"] != false ||
+		profile["external_beta_launched"] != false {
+		t.Fatalf("Month 6 release-readiness lint profile lost boundary: %#v", profile)
+	}
+	detectors, ok := profile["required_detectors"].([]any)
+	if !ok || len(detectors) == 0 {
+		t.Fatalf("Month 6 release-readiness lint profile missing required detectors: %#v", profile)
+	}
+	seen := map[string]bool{}
+	for _, item := range detectors {
+		detector, _ := item.(string)
+		seen[detector] = true
+	}
+	for _, want := range []string{
+		"month6_rsi_activation_overclaim",
+		"month6_live_self_modification_overclaim",
+		"month6_external_beta_overclaim",
+		"month6_promotion_overclaim",
+		"month6_provider_pilot_overclaim",
+		"month6_release_overclaim",
+		"month6_missing_no_release_boundary",
+		"month6_missing_current_pair_boundary",
+		"month6_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 6 release-readiness lint profile does not require detector %q: %#v", want, detectors)
+		}
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
