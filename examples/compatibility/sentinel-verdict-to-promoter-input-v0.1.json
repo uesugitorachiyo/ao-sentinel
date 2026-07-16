@@ -1,0 +1,43 @@
+{
+  "schema_version": "ao.compatibility.sentinel-verdict-to-promoter-input-vector.v1",
+  "vector_id": "ao-sentinel-verdict-to-ao-promoter-promotion-input-v1",
+  "edge": "ao-sentinel.sentinel_verdict -> ao-promoter.promotion_input",
+  "producer": {
+    "repository": "ao-sentinel",
+    "contract": "ao.sentinel.verdict.v0.1"
+  },
+  "consumer": {
+    "repository": "ao-promoter",
+    "contract": "ao.promoter.promotion-input.v1"
+  },
+  "sentinel_verdict": {
+    "schema_version": "ao.sentinel.verdict.v0.1",
+    "verdict": "clear",
+    "target_id": "ao-stack-current-release-pair",
+    "baseline_id": "ao-stack-v0.5.1-v0.1.15",
+    "safety_status": "passed",
+    "regression_status": "passed",
+    "blockers": [],
+    "recommended_actions": [],
+    "promoter_hold_required": false,
+    "rollback_recommended": false,
+    "mutates_live_state": false
+  },
+  "expected_promoter_promotion_input": {
+    "schema_version": "ao.promoter.promotion-input.v1",
+    "source_verdict_schema": "ao.sentinel.verdict.v0.1",
+    "source_repository": "ao-sentinel",
+    "input_family": "safety_verdict",
+    "promotion_input_status": "accepted",
+    "hold_required": false
+  },
+  "authority_boundaries": {
+    "promotion_requested": false,
+    "promotion_granted": false,
+    "safe_to_execute": false,
+    "executes_work": false,
+    "mutates_repositories": false,
+    "calls_providers": false,
+    "releases_or_deploys": false
+  }
+}
