@@ -127,6 +127,41 @@ func TestGatewayIntentPublicRiskFixtureScansClear(t *testing.T) {
 	}
 }
 
+func TestProducesSentinelVerdictToPromoterInputVector(t *testing.T) {
+	root := filepath.Join("..", "..")
+	vectorPath := filepath.Join(root, "examples", "compatibility", "sentinel-verdict-to-promoter-input-v0.1.json")
+	body, err := os.ReadFile(vectorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector map[string]any
+	if err := json.Unmarshal(body, &vector); err != nil {
+		t.Fatal(err)
+	}
+	if vector["schema_version"] != "ao.compatibility.sentinel-verdict-to-promoter-input-vector.v1" ||
+		vector["edge"] != "ao-sentinel.sentinel_verdict -> ao-promoter.promotion_input" {
+		t.Fatalf("unexpected Sentinel compatibility vector identity: %#v", vector)
+	}
+	verdict := vector["sentinel_verdict"].(map[string]any)
+	if verdict["schema_version"] != "ao.sentinel.verdict.v0.1" ||
+		verdict["verdict"] != "clear" ||
+		verdict["promoter_hold_required"] != false {
+		t.Fatalf("unexpected Sentinel verdict: %#v", verdict)
+	}
+	expected := vector["expected_promoter_promotion_input"].(map[string]any)
+	if expected["schema_version"] != "ao.promoter.promotion-input.v1" ||
+		expected["source_verdict_schema"] != verdict["schema_version"] ||
+		expected["promotion_input_status"] != "accepted" {
+		t.Fatalf("unexpected Promoter expectation: %#v", expected)
+	}
+	boundaries := vector["authority_boundaries"].(map[string]any)
+	for _, key := range []string{"promotion_requested", "promotion_granted", "safe_to_execute", "executes_work", "mutates_repositories", "calls_providers", "releases_or_deploys"} {
+		if boundaries[key] != false {
+			t.Fatalf("Sentinel vector boundary %s = %#v, want false", key, boundaries[key])
+		}
+	}
+}
+
 func TestGatewayIntentAuthorityWideningFixtureFails(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
