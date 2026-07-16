@@ -934,6 +934,60 @@ func TestGitHubIssueWorkflowWordingProfileFailsOverclaims(t *testing.T) {
 	}
 }
 
+func TestGitHubIssueMonth2AuthenticityWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "github-issue-month2-authenticity-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "github-issue-month2-authenticity",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "github-issue-month2-authenticity-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["profile"] != "github-issue-month2-authenticity" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("GitHub issue Month 2 wording should pass: %#v", packet)
+	}
+}
+
+func TestGitHubIssueMonth2AuthenticityWordingProfileFailsOverclaims(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "github-issue-month2-authenticity-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "github-issue-month2-authenticity",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "github-issue-month2-authenticity-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	findings := packet["findings"].([]any)
+	seen := map[string]bool{}
+	for _, finding := range findings {
+		entry := finding.(map[string]any)
+		seen[entry["detector"].(string)] = true
+	}
+	for _, want := range []string{
+		"github_issue_false_authenticity_overclaim",
+		"github_issue_flaky_certainty_overclaim",
+		"github_issue_security_public_repair_overclaim",
+		"github_issue_provider_pilot_overclaim",
+		"github_issue_release_overclaim",
+		"github_issue_rsi_overclaim",
+	} {
+		if !seen[want] {
+			t.Fatalf("GitHub issue Month 2 profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
 func TestAdoptionMonth2OperatorDrillWordingProfileScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)
