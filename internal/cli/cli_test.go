@@ -877,6 +877,63 @@ func TestAdoptionMonth1GateReadinessWordingProfileFixtureDefinesBoundaries(t *te
 	}
 }
 
+func TestGitHubIssueWorkflowWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "github-issue-workflow-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "adoption-month1-gate-readiness",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "github-issue-workflow-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["profile"] != "adoption-month1-gate-readiness" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("GitHub issue workflow wording should pass: %#v", packet)
+	}
+}
+
+func TestGitHubIssueWorkflowWordingProfileFailsOverclaims(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "github-issue-workflow-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "adoption-month1-gate-readiness",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "github-issue-workflow-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	findings := packet["findings"].([]any)
+	seen := map[string]bool{}
+	for _, finding := range findings {
+		entry := finding.(map[string]any)
+		seen[entry["detector"].(string)] = true
+	}
+	for _, want := range []string{
+		"github_issue_feature_pr_merge_overclaim",
+		"github_issue_pr_ready_overclaim",
+		"github_issue_review_approval_overclaim",
+		"github_issue_write_overclaim",
+		"adoption_month1_gate_activation_overclaim",
+		"adoption_month1_release_overclaim",
+		"adoption_month1_external_beta_overclaim",
+		"adoption_month1_promotion_overclaim",
+		"adoption_month1_rsi_activation_overclaim",
+	} {
+		if !seen[want] {
+			t.Fatalf("GitHub issue workflow profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
 func TestAdoptionMonth2OperatorDrillWordingProfileScansClear(t *testing.T) {
 	if err := os.MkdirAll("tmp", 0o755); err != nil {
 		t.Fatal(err)

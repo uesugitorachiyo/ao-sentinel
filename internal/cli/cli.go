@@ -2117,6 +2117,30 @@ func detectors(profile string) []struct {
 				summary  string
 				re       *regexp.Regexp
 			}{"adoption_month1_fully_autonomous_overclaim", "high", "Adoption Month 1 fully autonomous overclaim detected", regexp.MustCompile(`(?i)\bfully\s+autonomous\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"github_issue_feature_pr_merge_overclaim", "critical", "GitHub issue workflow feature PR merge overclaim detected", regexp.MustCompile(`(?i)\b(merge|auto[-\s]*merge)\s+(feature[-\s]*generated\s+)?PRs?\b|\b(feature[-\s]*generated\s+)?PRs?\s+(can\s+)?(merge|be\s+merged)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"github_issue_pr_ready_overclaim", "high", "GitHub issue workflow ready-for-review overclaim detected", regexp.MustCompile(`(?i)\bmark\s+.*\bready\s+for\s+review\b|\bready[-\s]+for[-\s]+review\s+(authorized|allowed|enabled)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"github_issue_review_approval_overclaim", "high", "GitHub issue workflow review approval overclaim detected", regexp.MustCompile(`(?i)\b(approve|approval)\s+.*\b(PR|pull\s+request|review)\b|\bsubmit\s+.*\breview\s+approval\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"github_issue_write_overclaim", "high", "GitHub issue workflow issue-write overclaim detected", regexp.MustCompile(`(?i)\b(comment|label|assign|close|reopen)\s+.*\bissues?\b|\bissues?\s+.*\b(commented|labeled|assigned|closed|reopened)\b`)},
 		)
 	}
 	if profile == "adoption-month2-operator-drill" {
@@ -2315,7 +2339,7 @@ func month6ReleaseReadinessBoundaryFindings(file string, body string) []map[stri
 		re      *regexp.Regexp
 	}{
 		{"month6_missing_no_release_boundary", "Month 6 release-readiness document is missing no-release decision wording", regexp.MustCompile(`(?i)\b(no[-_\s]*release|release\s+decision\s*=\s*no_release|does\s+not\s+require\s+a\s+new\s+stable\s+release)\b`)},
-		{"month6_missing_current_pair_boundary", "Month 6 release-readiness document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
+		{"month6_missing_current_pair_boundary", "Month 6 release-readiness document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|v0\.1\.16|Control\s+Plane\s+v0\.1\.15|Control\s+Plane\s+v0\.1\.16)\b`)},
 		{"month6_missing_rsi_denied_boundary", "Month 6 release-readiness document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
 	}
 	findings := []map[string]any{}
@@ -2339,7 +2363,7 @@ func adoptionMonth1GateReadinessBoundaryFindings(file string, body string) []map
 		summary string
 		re      *regexp.Regexp
 	}{
-		{"adoption_month1_missing_current_pair_boundary", "Adoption Month 1 gate-readiness document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
+		{"adoption_month1_missing_current_pair_boundary", "Adoption Month 1 gate-readiness document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|v0\.1\.16|Control\s+Plane\s+v0\.1\.15|Control\s+Plane\s+v0\.1\.16)\b`)},
 		{"adoption_month1_missing_gate_ready_not_active_boundary", "Adoption Month 1 gate-readiness document is missing ready-not-active gate wording", regexp.MustCompile(`(?i)\bcompatibility\s+gate\b[\s\S]*(ready|not\s+active|activation\s+is\s+not\s+authorized)\b`)},
 		{"adoption_month1_missing_rsi_denied_boundary", "Adoption Month 1 gate-readiness document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
 	}
@@ -2364,7 +2388,7 @@ func adoptionMonth2OperatorDrillBoundaryFindings(file string, body string) []map
 		summary string
 		re      *regexp.Regexp
 	}{
-		{"adoption_month2_missing_current_pair_boundary", "Adoption Month 2 operator-drill document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
+		{"adoption_month2_missing_current_pair_boundary", "Adoption Month 2 operator-drill document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|v0\.1\.16|Control\s+Plane\s+v0\.1\.15|Control\s+Plane\s+v0\.1\.16)\b`)},
 		{"adoption_month2_missing_gate_ready_not_active_boundary", "Adoption Month 2 operator-drill document is missing ready-not-active gate wording", regexp.MustCompile(`(?i)\bcompatibility\s+gate\b[\s\S]*(ready|not\s+active|activation\s+is\s+not\s+authorized)\b`)},
 		{"adoption_month2_missing_rsi_denied_boundary", "Adoption Month 2 operator-drill document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
 	}
@@ -2389,7 +2413,7 @@ func adoptionMonth3EvidenceMaintenanceBoundaryFindings(file string, body string)
 		summary string
 		re      *regexp.Regexp
 	}{
-		{"adoption_month3_missing_current_pair_boundary", "Adoption Month 3 maintenance document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
+		{"adoption_month3_missing_current_pair_boundary", "Adoption Month 3 maintenance document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|v0\.1\.16|Control\s+Plane\s+v0\.1\.15|Control\s+Plane\s+v0\.1\.16)\b`)},
 		{"adoption_month3_missing_maintenance_boundary", "Adoption Month 3 maintenance document is missing evidence-maintenance wording", regexp.MustCompile(`(?i)\b(evidence\s+maintenance|maintenance\s+report|freshness\s+check|matrix\s+drift)\b`)},
 		{"adoption_month3_missing_gate_ready_not_active_boundary", "Adoption Month 3 maintenance document is missing ready-not-active gate wording", regexp.MustCompile(`(?i)\bcompatibility\s+gate\b[\s\S]*(ready|not\s+active|activation\s+is\s+not\s+authorized)\b`)},
 		{"adoption_month3_missing_rsi_denied_boundary", "Adoption Month 3 maintenance document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
@@ -2415,7 +2439,7 @@ func adoptionMonth5SupportReadinessBoundaryFindings(file string, body string) []
 		summary string
 		re      *regexp.Regexp
 	}{
-		{"adoption_month5_missing_current_pair_boundary", "Adoption Month 5 support-readiness document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
+		{"adoption_month5_missing_current_pair_boundary", "Adoption Month 5 support-readiness document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|v0\.1\.16|Control\s+Plane\s+v0\.1\.15|Control\s+Plane\s+v0\.1\.16)\b`)},
 		{"adoption_month5_missing_support_readiness_boundary", "Adoption Month 5 support-readiness document is missing support-readiness wording", regexp.MustCompile(`(?i)\b(support\s+readiness|support\s+package|support\s+states|windows[-_\s]*safe\s+rollback)\b`)},
 		{"adoption_month5_missing_gate_ready_not_active_boundary", "Adoption Month 5 support-readiness document is missing ready-not-active gate wording", regexp.MustCompile(`(?i)\bcompatibility\s+gate\b[\s\S]*(ready|not\s+active|activation\s+is\s+not\s+authorized)\b`)},
 		{"adoption_month5_missing_rsi_denied_boundary", "Adoption Month 5 support-readiness document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
