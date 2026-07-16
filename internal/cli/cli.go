@@ -155,7 +155,7 @@ func printHelp(w io.Writer) {
 Usage:
   sentinel target validate --target <json>
   sentinel baseline validate --baseline <json>
-  sentinel safety scan --path <path> --out <json> [--profile default|public-beta]
+  sentinel safety scan --path <path> --out <json> [--profile default|public-beta|month4-controlled-loop]
   sentinel run regression --suite <json> --out <json>
   sentinel compare regression --baseline <json> --run <json> --out <json>
   sentinel monitor evaluate --target <json> --baseline <json> --safety <json> --regression <json> --out <json>
@@ -224,7 +224,7 @@ func runSafety(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if profile != "default" && profile != "public-beta" {
+	if profile != "default" && profile != "public-beta" && profile != "month4-controlled-loop" {
 		return fmt.Errorf("unknown safety profile %q", profile)
 	}
 	if err := requireTmpOutput(out); err != nil {
@@ -1756,6 +1756,9 @@ func safetyScanWithProfile(path string, profile string) (map[string]any, error) 
 				}
 			}
 		}
+		if profile == "month4-controlled-loop" {
+			findings = append(findings, month4ControlledLoopBoundaryFindings(file, string(body))...)
+		}
 		return nil
 	}
 	if info.IsDir() {
@@ -1932,7 +1935,65 @@ func detectors(profile string) []struct {
 			re       *regexp.Regexp
 		}{"public_beta_authority_overclaim", "high", "public beta authority overclaim detected", regexp.MustCompile(`(?i)\b(public\s+beta|beta)\b[^.\n]*(automatically\s+runs|provider-backed|publishes?\s+releases?|promotes?\s+unrestricted\s+RSI|grants?\s+(provider|credential|release|mutation)\s+authority)`)})
 	}
+	if profile == "month4-controlled-loop" {
+		items = append(items,
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month4_rsi_activation_overclaim", "critical", "Month 4 RSI activation overclaim detected", regexp.MustCompile(`(?i)\bRSI\s+(achieved|active|activated|authorized|enabled|granted)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month4_live_self_modification_overclaim", "critical", "Month 4 live self-modification overclaim detected", regexp.MustCompile(`(?i)\b(self-improving\s+system\s+(is\s+)?active|autonomous\s+self-modification\s+(is\s+)?enabled|live\s+self-modification\s+(active|authorized|enabled|granted))\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month4_external_beta_overclaim", "high", "Month 4 external beta overclaim detected", regexp.MustCompile(`(?i)\bexternal\s+beta\s+(launched|active|started|open|enabled)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month4_promotion_overclaim", "high", "Month 4 promotion overclaim detected", regexp.MustCompile(`(?i)\bpromotion\s+(requested|granted|approved|active|launched)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month4_provider_pilot_overclaim", "high", "Month 4 provider-pilot overclaim detected", regexp.MustCompile(`(?i)\bprovider[-\s]+pilot\s+(launched|ran|started|active|enabled)\b`)},
+		)
+	}
 	return items
+}
+
+func month4ControlledLoopBoundaryFindings(file string, body string) []map[string]any {
+	checks := []struct {
+		name    string
+		summary string
+		re      *regexp.Regexp
+	}{
+		{"month4_missing_dry_run_boundary", "Month 4 controlled loop document is missing dry-run-only boundary wording", regexp.MustCompile(`(?i)\b(dry[-_\s]*run\s+only|fixture[-_\s]*only)\b`)},
+		{"month4_missing_rsi_denied_boundary", "Month 4 controlled loop document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
+	}
+	findings := []map[string]any{}
+	for _, check := range checks {
+		if !check.re.MatchString(body) {
+			findings = append(findings, map[string]any{
+				"detector": check.name,
+				"file":     filepath.ToSlash(file),
+				"line":     1,
+				"severity": "high",
+				"summary":  check.summary,
+			})
+		}
+	}
+	return findings
 }
 
 func readJSONMap(path string) (map[string]any, error) {

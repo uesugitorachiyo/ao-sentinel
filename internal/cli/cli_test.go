@@ -482,6 +482,110 @@ func TestPublicBetaWordingLintProfileFixtureIsPlanningOnly(t *testing.T) {
 	}
 }
 
+func TestMonth4ControlledLoopWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "month4-controlled-loop-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "month4-controlled-loop",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "month4-controlled-loop-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["profile"] != "month4-controlled-loop" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("Month 4 controlled loop wording fixture should scan clear: %#v", packet)
+	}
+}
+
+func TestMonth4ControlledLoopWordingProfileFailsOverclaimsAndMissingBoundaries(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "month4-controlled-loop-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "month4-controlled-loop",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "month4-controlled-loop-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["profile"] != "month4-controlled-loop" || packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("Month 4 controlled loop overclaim fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("Month 4 controlled loop fixture missing findings: %#v", packet)
+	}
+	seen := map[string]bool{}
+	for _, item := range findings {
+		finding, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("unexpected Month 4 finding shape: %#v", item)
+		}
+		detector, _ := finding["detector"].(string)
+		seen[detector] = true
+	}
+	for _, want := range []string{
+		"month4_rsi_activation_overclaim",
+		"month4_live_self_modification_overclaim",
+		"month4_external_beta_overclaim",
+		"month4_promotion_overclaim",
+		"month4_provider_pilot_overclaim",
+		"month4_missing_dry_run_boundary",
+		"month4_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 4 wording profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
+func TestMonth4ControlledLoopWordingProfileFixtureDefinesBoundaries(t *testing.T) {
+	profile := readMap(t, filepath.Join("..", "..", "examples", "safety", "valid", "month4-controlled-loop-wording-lint-profile.json"))
+	if profile["schema_version"] != "ao.sentinel.safety-lint-profile.v0.1" ||
+		profile["profile"] != "month4-controlled-loop" ||
+		profile["status"] != "dry_run_only" ||
+		profile["safety_gate"] != "controlled_self_improvement_dry_run_only" ||
+		profile["dry_run_only_required"] != true ||
+		profile["rsi_remains_denied"] != true ||
+		profile["live_self_modification_allowed"] != false ||
+		profile["provider_calls_allowed"] != false ||
+		profile["promotion_requested"] != false ||
+		profile["external_beta_launched"] != false {
+		t.Fatalf("Month 4 controlled loop lint profile lost dry-run boundary: %#v", profile)
+	}
+	detectors, ok := profile["required_detectors"].([]any)
+	if !ok || len(detectors) == 0 {
+		t.Fatalf("Month 4 controlled loop lint profile missing required detectors: %#v", profile)
+	}
+	seen := map[string]bool{}
+	for _, item := range detectors {
+		detector, _ := item.(string)
+		seen[detector] = true
+	}
+	for _, want := range []string{
+		"month4_rsi_activation_overclaim",
+		"month4_live_self_modification_overclaim",
+		"month4_external_beta_overclaim",
+		"month4_promotion_overclaim",
+		"month4_provider_pilot_overclaim",
+		"month4_missing_dry_run_boundary",
+		"month4_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 4 controlled loop lint profile does not require detector %q: %#v", want, detectors)
+		}
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
