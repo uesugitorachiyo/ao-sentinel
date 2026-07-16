@@ -1,0 +1,29 @@
+{
+  "schema_version": "ao.sentinel.safety-lint-profile.v0.1",
+  "profile": "adoption-month1-gate-readiness",
+  "status": "gate_ready_not_active",
+  "safety_gate": "gate_readiness_no_activation_no_provider_no_release_no_promotion_no_rsi",
+  "current_pair_required": true,
+  "gate_readiness_required": true,
+  "gate_activation_allowed": false,
+  "live_self_modification_allowed": false,
+  "provider_calls_allowed": false,
+  "release_or_publish_allowed": false,
+  "promotion_requested": false,
+  "external_beta_launched": false,
+  "rsi_remains_denied": true,
+  "required_detectors": [
+    "adoption_month1_gate_activation_overclaim",
+    "adoption_month1_rsi_activation_overclaim",
+    "adoption_month1_live_self_modification_overclaim",
+    "adoption_month1_external_beta_overclaim",
+    "adoption_month1_promotion_overclaim",
+    "adoption_month1_provider_pilot_overclaim",
+    "adoption_month1_release_overclaim",
+    "adoption_month1_fully_autonomous_overclaim",
+    "adoption_month1_missing_current_pair_boundary",
+    "adoption_month1_missing_gate_ready_not_active_boundary",
+    "adoption_month1_missing_rsi_denied_boundary"
+  ],
+  "mutates_live_state": false
+}
