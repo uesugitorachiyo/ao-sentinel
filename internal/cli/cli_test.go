@@ -586,6 +586,113 @@ func TestMonth4ControlledLoopWordingProfileFixtureDefinesBoundaries(t *testing.T
 	}
 }
 
+func TestMonth5OperatorWorkflowWordingProfileScansClear(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "month5-operator-workflow-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "month5-operator-workflow",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "month5-operator-workflow-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["schema_version"] != "ao.sentinel.safety-scan.v0.1" ||
+		packet["profile"] != "month5-operator-workflow" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("Month 5 operator workflow wording fixture should scan clear: %#v", packet)
+	}
+}
+
+func TestMonth5OperatorWorkflowWordingProfileFailsOverclaimsAndMissingBoundaries(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "month5-operator-workflow-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "month5-operator-workflow",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "month5-operator-workflow-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	if packet["profile"] != "month5-operator-workflow" || packet["status"] != "failed" || packet["findings_count"].(float64) == 0 {
+		t.Fatalf("Month 5 operator workflow overclaim fixture should fail: %#v", packet)
+	}
+	findings, ok := packet["findings"].([]any)
+	if !ok || len(findings) == 0 {
+		t.Fatalf("Month 5 operator workflow fixture missing findings: %#v", packet)
+	}
+	seen := map[string]bool{}
+	for _, item := range findings {
+		finding, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("unexpected Month 5 finding shape: %#v", item)
+		}
+		detector, _ := finding["detector"].(string)
+		seen[detector] = true
+	}
+	for _, want := range []string{
+		"month5_rsi_activation_overclaim",
+		"month5_live_self_modification_overclaim",
+		"month5_external_beta_overclaim",
+		"month5_promotion_overclaim",
+		"month5_provider_pilot_overclaim",
+		"month5_release_overclaim",
+		"month5_missing_operator_workflow_boundary",
+		"month5_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 5 wording profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
+func TestMonth5OperatorWorkflowWordingProfileFixtureDefinesBoundaries(t *testing.T) {
+	profile := readMap(t, filepath.Join("..", "..", "examples", "safety", "valid", "month5-operator-workflow-wording-lint-profile.json"))
+	if profile["schema_version"] != "ao.sentinel.safety-lint-profile.v0.1" ||
+		profile["profile"] != "month5-operator-workflow" ||
+		profile["status"] != "operator_workflow_only" ||
+		profile["safety_gate"] != "operator_workflow_no_release_no_provider_no_rsi" ||
+		profile["operator_workflow_required"] != true ||
+		profile["rsi_remains_denied"] != true ||
+		profile["live_self_modification_allowed"] != false ||
+		profile["provider_calls_allowed"] != false ||
+		profile["release_or_publish_allowed"] != false ||
+		profile["promotion_requested"] != false ||
+		profile["external_beta_launched"] != false {
+		t.Fatalf("Month 5 operator workflow lint profile lost boundary: %#v", profile)
+	}
+	detectors, ok := profile["required_detectors"].([]any)
+	if !ok || len(detectors) == 0 {
+		t.Fatalf("Month 5 operator workflow lint profile missing required detectors: %#v", profile)
+	}
+	seen := map[string]bool{}
+	for _, item := range detectors {
+		detector, _ := item.(string)
+		seen[detector] = true
+	}
+	for _, want := range []string{
+		"month5_rsi_activation_overclaim",
+		"month5_live_self_modification_overclaim",
+		"month5_external_beta_overclaim",
+		"month5_promotion_overclaim",
+		"month5_provider_pilot_overclaim",
+		"month5_release_overclaim",
+		"month5_missing_operator_workflow_boundary",
+		"month5_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 5 operator workflow lint profile does not require detector %q: %#v", want, detectors)
+		}
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{

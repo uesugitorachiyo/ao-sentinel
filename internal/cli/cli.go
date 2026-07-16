@@ -155,7 +155,7 @@ func printHelp(w io.Writer) {
 Usage:
   sentinel target validate --target <json>
   sentinel baseline validate --baseline <json>
-  sentinel safety scan --path <path> --out <json> [--profile default|public-beta|month4-controlled-loop]
+  sentinel safety scan --path <path> --out <json> [--profile default|public-beta|month4-controlled-loop|month5-operator-workflow]
   sentinel run regression --suite <json> --out <json>
   sentinel compare regression --baseline <json> --run <json> --out <json>
   sentinel monitor evaluate --target <json> --baseline <json> --safety <json> --regression <json> --out <json>
@@ -224,7 +224,7 @@ func runSafety(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if profile != "default" && profile != "public-beta" && profile != "month4-controlled-loop" {
+	if profile != "default" && profile != "public-beta" && profile != "month4-controlled-loop" && profile != "month5-operator-workflow" {
 		return fmt.Errorf("unknown safety profile %q", profile)
 	}
 	if err := requireTmpOutput(out); err != nil {
@@ -1759,6 +1759,9 @@ func safetyScanWithProfile(path string, profile string) (map[string]any, error) 
 		if profile == "month4-controlled-loop" {
 			findings = append(findings, month4ControlledLoopBoundaryFindings(file, string(body))...)
 		}
+		if profile == "month5-operator-workflow" {
+			findings = append(findings, month5OperatorWorkflowBoundaryFindings(file, string(body))...)
+		}
 		return nil
 	}
 	if info.IsDir() {
@@ -1969,6 +1972,46 @@ func detectors(profile string) []struct {
 			}{"month4_provider_pilot_overclaim", "high", "Month 4 provider-pilot overclaim detected", regexp.MustCompile(`(?i)\bprovider[-\s]+pilot\s+(launched|ran|started|active|enabled)\b`)},
 		)
 	}
+	if profile == "month5-operator-workflow" {
+		items = append(items,
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month5_rsi_activation_overclaim", "critical", "Month 5 RSI activation overclaim detected", regexp.MustCompile(`(?i)\bRSI\s+(achieved|active|activated|authorized|enabled|granted)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month5_live_self_modification_overclaim", "critical", "Month 5 live self-modification overclaim detected", regexp.MustCompile(`(?i)\b(self-improving\s+system\s+(is\s+)?active|autonomous\s+self-modification\s+(is\s+)?enabled|live\s+self-modification\s+(active|authorized|enabled|granted))\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month5_external_beta_overclaim", "high", "Month 5 external beta overclaim detected", regexp.MustCompile(`(?i)\bexternal\s+beta\s+(launched|active|started|open|enabled)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month5_promotion_overclaim", "high", "Month 5 promotion overclaim detected", regexp.MustCompile(`(?i)\bpromotion\s+(requested|granted|approved|active|launched)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month5_provider_pilot_overclaim", "high", "Month 5 provider-pilot overclaim detected", regexp.MustCompile(`(?i)\bprovider[-\s]+pilot\s+(launched|ran|started|active|enabled)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"month5_release_overclaim", "high", "Month 5 release overclaim detected", regexp.MustCompile(`(?i)\b(release|tag|upload|deploy(?:ment)?)\s+(authorized|created|published|uploaded|deployed|granted)\b`)},
+		)
+	}
 	return items
 }
 
@@ -1980,6 +2023,30 @@ func month4ControlledLoopBoundaryFindings(file string, body string) []map[string
 	}{
 		{"month4_missing_dry_run_boundary", "Month 4 controlled loop document is missing dry-run-only boundary wording", regexp.MustCompile(`(?i)\b(dry[-_\s]*run\s+only|fixture[-_\s]*only)\b`)},
 		{"month4_missing_rsi_denied_boundary", "Month 4 controlled loop document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
+	}
+	findings := []map[string]any{}
+	for _, check := range checks {
+		if !check.re.MatchString(body) {
+			findings = append(findings, map[string]any{
+				"detector": check.name,
+				"file":     filepath.ToSlash(file),
+				"line":     1,
+				"severity": "high",
+				"summary":  check.summary,
+			})
+		}
+	}
+	return findings
+}
+
+func month5OperatorWorkflowBoundaryFindings(file string, body string) []map[string]any {
+	checks := []struct {
+		name    string
+		summary string
+		re      *regexp.Regexp
+	}{
+		{"month5_missing_operator_workflow_boundary", "Month 5 operator workflow document is missing operator-workflow boundary wording", regexp.MustCompile(`(?i)\b(operator\s+workflow|operator\s+readback|safe[-_\s]*next[-_\s]*work)\b`)},
+		{"month5_missing_rsi_denied_boundary", "Month 5 operator workflow document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
 	}
 	findings := []map[string]any{}
 	for _, check := range checks {
