@@ -1,0 +1,24 @@
+{
+  "schema_version": "ao.sentinel.safety-lint-profile.v0.1",
+  "profile": "adoption-month3-evidence-maintenance",
+  "status": "evidence_maintenance_only",
+  "safety_gate": "maintenance_no_gate_activation_no_provider_no_release_no_promotion_no_rsi",
+  "gate_activation_allowed": false,
+  "rsi_remains_denied": true,
+  "release_or_publish_allowed": false,
+  "promotion_requested": false,
+  "external_beta_launched": false,
+  "required_detectors": [
+    "adoption_month3_gate_activation_overclaim",
+    "adoption_month3_rsi_activation_overclaim",
+    "adoption_month3_live_self_modification_overclaim",
+    "adoption_month3_external_beta_overclaim",
+    "adoption_month3_promotion_overclaim",
+    "adoption_month3_provider_pilot_overclaim",
+    "adoption_month3_release_overclaim",
+    "adoption_month3_missing_current_pair_boundary",
+    "adoption_month3_missing_maintenance_boundary",
+    "adoption_month3_missing_gate_ready_not_active_boundary",
+    "adoption_month3_missing_rsi_denied_boundary"
+  ]
+}

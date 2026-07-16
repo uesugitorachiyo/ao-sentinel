@@ -155,7 +155,7 @@ func printHelp(w io.Writer) {
 Usage:
   sentinel target validate --target <json>
   sentinel baseline validate --baseline <json>
-  sentinel safety scan --path <path> --out <json> [--profile default|public-beta|month4-controlled-loop|month5-operator-workflow|month6-release-readiness|adoption-month1-gate-readiness|adoption-month2-operator-drill]
+  sentinel safety scan --path <path> --out <json> [--profile default|public-beta|month4-controlled-loop|month5-operator-workflow|month6-release-readiness|adoption-month1-gate-readiness|adoption-month2-operator-drill|adoption-month3-evidence-maintenance]
   sentinel run regression --suite <json> --out <json>
   sentinel compare regression --baseline <json> --run <json> --out <json>
   sentinel monitor evaluate --target <json> --baseline <json> --safety <json> --regression <json> --out <json>
@@ -224,7 +224,7 @@ func runSafety(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if profile != "default" && profile != "public-beta" && profile != "month4-controlled-loop" && profile != "month5-operator-workflow" && profile != "month6-release-readiness" && profile != "adoption-month1-gate-readiness" && profile != "adoption-month2-operator-drill" {
+	if profile != "default" && profile != "public-beta" && profile != "month4-controlled-loop" && profile != "month5-operator-workflow" && profile != "month6-release-readiness" && profile != "adoption-month1-gate-readiness" && profile != "adoption-month2-operator-drill" && profile != "adoption-month3-evidence-maintenance" {
 		return fmt.Errorf("unknown safety profile %q", profile)
 	}
 	if err := requireTmpOutput(out); err != nil {
@@ -1771,6 +1771,9 @@ func safetyScanWithProfile(path string, profile string) (map[string]any, error) 
 		if profile == "adoption-month2-operator-drill" {
 			findings = append(findings, adoptionMonth2OperatorDrillBoundaryFindings(file, string(body))...)
 		}
+		if profile == "adoption-month3-evidence-maintenance" {
+			findings = append(findings, adoptionMonth3EvidenceMaintenanceBoundaryFindings(file, string(body))...)
+		}
 		return nil
 	}
 	if info.IsDir() {
@@ -2159,6 +2162,52 @@ func detectors(profile string) []struct {
 			}{"adoption_month2_release_overclaim", "high", "Adoption Month 2 release overclaim detected", regexp.MustCompile(`(?i)\b(release|tag|upload|deploy(?:ment)?|binary publication)\s+(is\s+)?(authorized|created|published|uploaded|deployed|granted)\b`)},
 		)
 	}
+	if profile == "adoption-month3-evidence-maintenance" {
+		items = append(items,
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_gate_activation_overclaim", "high", "Adoption Month 3 compatibility gate activation overclaim detected", regexp.MustCompile(`(?i)\bcompatibility\s+gate\s+(is\s+)?(active|activated|enabled|complete|launched)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_rsi_activation_overclaim", "critical", "Adoption Month 3 RSI activation overclaim detected", regexp.MustCompile(`(?i)\bRSI\s+(is\s+)?(achieved|active|activated|authorized|enabled|granted)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_live_self_modification_overclaim", "critical", "Adoption Month 3 live self-modification overclaim detected", regexp.MustCompile(`(?i)\b(self-improving\s+system\s+(is\s+)?active|autonomous\s+self-modification\s+(is\s+)?enabled|live\s+self-modification\s+(active|authorized|enabled|granted))\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_external_beta_overclaim", "high", "Adoption Month 3 external beta overclaim detected", regexp.MustCompile(`(?i)\bexternal\s+beta\s+(launched|active|started|open|enabled)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_promotion_overclaim", "high", "Adoption Month 3 promotion overclaim detected", regexp.MustCompile(`(?i)\bpromotion\s+(is\s+)?(requested|granted|approved|active|launched)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_provider_pilot_overclaim", "high", "Adoption Month 3 provider-pilot overclaim detected", regexp.MustCompile(`(?i)\bprovider[-\s]+pilot\s+(launched|ran|started|active|enabled)\b`)},
+			struct {
+				name     string
+				severity string
+				summary  string
+				re       *regexp.Regexp
+			}{"adoption_month3_release_overclaim", "high", "Adoption Month 3 release overclaim detected", regexp.MustCompile(`(?i)\b(release|tag|upload|deploy(?:ment)?|binary publication)\s+(is\s+)?(authorized|created|published|uploaded|deployed|granted)\b`)},
+		)
+	}
 	return items
 }
 
@@ -2269,6 +2318,32 @@ func adoptionMonth2OperatorDrillBoundaryFindings(file string, body string) []map
 		{"adoption_month2_missing_current_pair_boundary", "Adoption Month 2 operator-drill document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
 		{"adoption_month2_missing_gate_ready_not_active_boundary", "Adoption Month 2 operator-drill document is missing ready-not-active gate wording", regexp.MustCompile(`(?i)\bcompatibility\s+gate\b[\s\S]*(ready|not\s+active|activation\s+is\s+not\s+authorized)\b`)},
 		{"adoption_month2_missing_rsi_denied_boundary", "Adoption Month 2 operator-drill document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
+	}
+	findings := []map[string]any{}
+	for _, check := range checks {
+		if !check.re.MatchString(body) {
+			findings = append(findings, map[string]any{
+				"detector": check.name,
+				"file":     filepath.ToSlash(file),
+				"line":     1,
+				"severity": "high",
+				"summary":  check.summary,
+			})
+		}
+	}
+	return findings
+}
+
+func adoptionMonth3EvidenceMaintenanceBoundaryFindings(file string, body string) []map[string]any {
+	checks := []struct {
+		name    string
+		summary string
+		re      *regexp.Regexp
+	}{
+		{"adoption_month3_missing_current_pair_boundary", "Adoption Month 3 maintenance document is missing current release pair wording", regexp.MustCompile(`(?i)\bAO2\s+v0\.5\.1\b[\s\S]*\b(v0\.1\.15|Control\s+Plane\s+v0\.1\.15)\b`)},
+		{"adoption_month3_missing_maintenance_boundary", "Adoption Month 3 maintenance document is missing evidence-maintenance wording", regexp.MustCompile(`(?i)\b(evidence\s+maintenance|maintenance\s+report|freshness\s+check|matrix\s+drift)\b`)},
+		{"adoption_month3_missing_gate_ready_not_active_boundary", "Adoption Month 3 maintenance document is missing ready-not-active gate wording", regexp.MustCompile(`(?i)\bcompatibility\s+gate\b[\s\S]*(ready|not\s+active|activation\s+is\s+not\s+authorized)\b`)},
+		{"adoption_month3_missing_rsi_denied_boundary", "Adoption Month 3 maintenance document is missing RSI-denied boundary wording", regexp.MustCompile(`(?i)\b(RSI\s+(remains\s+)?denied|rsi_remains_denied)\b`)},
 	}
 	findings := []map[string]any{}
 	for _, check := range checks {
