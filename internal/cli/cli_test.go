@@ -1022,6 +1022,80 @@ func TestAdoptionMonth3EvidenceMaintenanceWordingProfileFixtureDefinesBoundaries
 	}
 }
 
+func TestAdoptionMonth5SupportReadinessWordingProfilePassesBoundedFixture(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "adoption-month5-support-readiness-wording-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunOK(t, []string{
+		"safety", "scan",
+		"--profile", "adoption-month5-support-readiness",
+		"--path", filepath.Join("..", "..", "examples", "safety", "valid", "adoption-month5-support-readiness-wording.md"),
+		"--out", outPath,
+	})
+	packet := readMap(t, outPath)
+	if packet["profile"] != "adoption-month5-support-readiness" ||
+		packet["status"] != "passed" ||
+		packet["findings_count"].(float64) != 0 ||
+		packet["mutates_live_state"] != false {
+		t.Fatalf("Month 5 support readiness wording should pass: %#v", packet)
+	}
+}
+
+func TestAdoptionMonth5SupportReadinessWordingProfileFailsOverclaimsAndMissingBoundaries(t *testing.T) {
+	if err := os.MkdirAll("tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join("tmp", "adoption-month5-support-readiness-overclaim-test.json")
+	t.Cleanup(func() { _ = os.Remove(outPath) })
+	assertRunFails(t, []string{
+		"safety", "scan",
+		"--profile", "adoption-month5-support-readiness",
+		"--path", filepath.Join("..", "..", "examples", "safety", "invalid", "adoption-month5-support-readiness-overclaim.md"),
+		"--out", outPath,
+	}, "safety scan failed")
+	packet := readMap(t, outPath)
+	findings := packet["findings"].([]any)
+	seen := map[string]bool{}
+	for _, finding := range findings {
+		entry := finding.(map[string]any)
+		seen[entry["detector"].(string)] = true
+	}
+	for _, want := range []string{
+		"adoption_month5_gate_activation_overclaim",
+		"adoption_month5_rsi_activation_overclaim",
+		"adoption_month5_external_beta_overclaim",
+		"adoption_month5_promotion_overclaim",
+		"adoption_month5_provider_pilot_overclaim",
+		"adoption_month5_release_overclaim",
+		"adoption_month5_missing_current_pair_boundary",
+		"adoption_month5_missing_support_readiness_boundary",
+		"adoption_month5_missing_gate_ready_not_active_boundary",
+		"adoption_month5_missing_rsi_denied_boundary",
+	} {
+		if !seen[want] {
+			t.Fatalf("Month 5 support readiness wording profile missing detector %q in findings: %#v", want, findings)
+		}
+	}
+}
+
+func TestAdoptionMonth5SupportReadinessWordingProfileFixtureDefinesBoundaries(t *testing.T) {
+	profile := readMap(t, filepath.Join("..", "..", "examples", "safety", "valid", "adoption-month5-support-readiness-wording-lint-profile.json"))
+	if profile["schema_version"] != "ao.sentinel.safety-lint-profile.v0.1" ||
+		profile["profile"] != "adoption-month5-support-readiness" ||
+		profile["status"] != "support_readiness_only" ||
+		profile["safety_gate"] != "support_readiness_no_gate_activation_no_provider_no_release_no_promotion_no_rsi" ||
+		profile["support_readiness_required"] != true ||
+		profile["gate_activation_allowed"] != false ||
+		profile["rsi_remains_denied"] != true ||
+		profile["release_or_publish_allowed"] != false ||
+		profile["promotion_requested"] != false ||
+		profile["external_beta_launched"] != false {
+		t.Fatalf("Month 5 support readiness lint profile lost boundary: %#v", profile)
+	}
+}
+
 func TestLiveMutationHoldVerdict(t *testing.T) {
 	f := newFixtureSet(t)
 	status := map[string]any{
