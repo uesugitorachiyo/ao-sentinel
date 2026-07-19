@@ -1738,13 +1738,18 @@ func safetyScanWithProfile(path string, profile string) (map[string]any, error) 
 	if err != nil {
 		return nil, err
 	}
+	scanDetectors := detectors(profile)
+	filesScanned := 0
+	linesScanned := 0
 	visit := func(file string) error {
 		body, err := os.ReadFile(file)
 		if err != nil {
 			return err
 		}
+		filesScanned++
 		for lineNo, line := range strings.Split(string(body), "\n") {
-			for _, detector := range detectors(profile) {
+			linesScanned++
+			for _, detector := range scanDetectors {
 				if detector.re.MatchString(line) {
 					findings = append(findings, map[string]any{
 						"detector": detector.name,
@@ -1815,6 +1820,12 @@ func safetyScanWithProfile(path string, profile string) (map[string]any, error) 
 		"findings":           findings,
 		"scanned_at_utc":     nowUTC(),
 		"mutates_live_state": false,
+		"scanner_metrics": map[string]any{
+			"detector_construction_count": 1,
+			"detectors_loaded":            len(scanDetectors),
+			"files_scanned":               filesScanned,
+			"lines_scanned":               linesScanned,
+		},
 	}, nil
 }
 
