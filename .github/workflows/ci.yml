@@ -16,10 +16,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
+        include:
+          - os: ubuntu-latest
+            target_label: linux-x86_64
+            binary_suffix: ""
+          - os: macos-latest
+            target_label: macos-aarch64
+            binary_suffix: ""
+          - os: windows-latest
+            target_label: windows-x86_64
+            binary_suffix: ".exe"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -38,3 +44,32 @@ jobs:
 
       - name: Build
         run: go build ./cmd/sentinel
+
+      - name: Build native artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_dir="target/native-artifacts/${{ matrix.target_label }}"
+          binary="ao-sentinel${{ matrix.binary_suffix }}"
+          mkdir -p "$artifact_dir"
+          go build -trimpath -o "$artifact_dir/$binary" ./cmd/sentinel
+          "$artifact_dir/$binary" --help > "$artifact_dir/help.txt"
+          cp LICENSE NOTICE "$artifact_dir/"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$artifact_dir/$binary" > "$artifact_dir/SHA256SUMS"
+          else
+            shasum -a 256 "$artifact_dir/$binary" > "$artifact_dir/SHA256SUMS"
+          fi
+          go env -json GOOS GOARCH GOVERSION > "$artifact_dir/go-env.json"
+          go_version=$(go version | sed 's|"|\\"|g')
+          cat > "$artifact_dir/native-artifact-summary.json" <<EOF
+          {"command":"./cmd/sentinel","entry_point":"ao-sentinel","go_version":"${go_version}","publication_allowed":false,"release_upload_attempted":false,"repository":"ao-sentinel","runner_os":"${RUNNER_OS}","schema_version":"ao.native-artifact-summary.v0.1","smoke":{"command":"--help","status":"passed"},"source_commit":"${GITHUB_SHA}","target_label":"${TARGET_LABEL}"}
+          EOF
+        env:
+          TARGET_LABEL: ${{ matrix.target_label }}
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ao-sentinel-native-artifact-${{ matrix.target_label }}-${{ github.sha }}
+          path: target/native-artifacts/${{ matrix.target_label }}
