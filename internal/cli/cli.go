@@ -139,6 +139,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		err = runSecurity(args[1:], stdout)
 	case "live-mutation":
 		err = runLiveMutation(args[1:], stdout)
+	case "issue-repair":
+		err = runIssueRepair(args[1:], stdout)
 	default:
 		err = fmt.Errorf("unknown command %q", args[0])
 	}
@@ -166,8 +168,9 @@ Usage:
   sentinel triage ci --signal <json> --out <json>
   sentinel security review --request <json> --out <json>
   sentinel live-mutation hold --status <json> --safety <json> --regression <json> --out <json>
+  sentinel issue-repair classify --request <json> --out <json>
 
-Commands: target baseline safety run compare monitor incident hold report watch triage security live-mutation`)
+Commands: target baseline safety run compare monitor incident hold report watch triage security live-mutation issue-repair`)
 }
 
 func runTarget(args []string, stdout io.Writer) error {
