@@ -24,6 +24,8 @@ func TestNativeArtifactWorkflowContract(t *testing.T) {
 		"actions/upload-artifact",
 		"ao-sentinel-native-artifact-${{ matrix.target_label }}-${{ github.sha }}",
 		"native-artifact-summary.json",
+		`"publication_allowed":false`,
+		`"release_upload_attempted":false`,
 		"SHA256SUMS",
 		"LICENSE",
 		"NOTICE",
