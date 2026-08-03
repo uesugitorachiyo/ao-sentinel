@@ -36,16 +36,7 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Test
-        run: go test ./... -count=1
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Build
-        run: go build ./cmd/sentinel
-
-      - name: Build native artifact
+      - name: Build native artifact from clean source
         shell: bash
         run: |
           set -euo pipefail
@@ -61,6 +52,59 @@ jobs:
             shasum -a 256 "$artifact_dir/$binary" > "$artifact_dir/SHA256SUMS"
           fi
           go env -json GOOS GOARCH GOVERSION > "$artifact_dir/go-env.json"
+
+      - name: Test
+        run: go test ./... -count=1
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./cmd/sentinel
+
+      - name: Checkout pinned supply-chain policy
+        uses: actions/checkout@v7
+        with:
+          repository: uesugitorachiyo/ao-architecture
+          ref: 4c501b4f1e55cb9b926709e19d496edf41984fb1
+          path: .ao-supply-chain-policy
+
+      - name: Package and verify supply-chain evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_dir="target/native-artifacts/${{ matrix.target_label }}"
+          binary="ao-sentinel${{ matrix.binary_suffix }}"
+          go run .ao-supply-chain-policy/scripts/read_go_binary_metadata.go \
+            "$artifact_dir/$binary" > "$artifact_dir/go-modules.json"
+          source_sha="${GITHUB_SHA}"
+          version="0.0.0+git.${source_sha:0:12}"
+          generated_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          supply_chain_dir="$artifact_dir/supply-chain"
+          archive="ao-sentinel-${version}-${TARGET_LABEL}.tar.gz"
+          python3 .ao-supply-chain-policy/scripts/build_go_supply_chain_candidate.py \
+            --workspace-root . \
+            --repository ao-sentinel \
+            --source-sha "$source_sha" \
+            --version "$version" \
+            --target "$TARGET_LABEL" \
+            --binary "$artifact_dir/$binary" \
+            --module-json "$artifact_dir/go-modules.json" \
+            --dependency-lock go.mod \
+            --license LICENSE \
+            --notice NOTICE \
+            --archive-name "$archive" \
+            --generated-at-utc "$generated_at_utc" \
+            --out "$supply_chain_dir"
+          python3 .ao-supply-chain-policy/scripts/verify_supply_chain_policy.py \
+            --inventory .ao-supply-chain-policy/stack/distributable-inventory.json \
+            --policy .ao-supply-chain-policy/stack/sbom-policy.json \
+            --evidence "$supply_chain_dir/supply-chain-evidence.json" \
+            --workspace-root "$supply_chain_dir" \
+            --expected-source-sha "$source_sha" \
+            --expected-version "$version" \
+            --expected-target "$TARGET_LABEL" \
+            --now "$generated_at_utc"
           go_version=$(go version | sed 's|"|\\"|g')
           cat > "$artifact_dir/native-artifact-summary.json" <<EOF
           {"command":"./cmd/sentinel","entry_point":"ao-sentinel","go_version":"${go_version}","publication_allowed":false,"release_upload_attempted":false,"repository":"ao-sentinel","runner_os":"${RUNNER_OS}","schema_version":"ao.native-artifact-summary.v0.1","smoke":{"command":"--help","status":"passed"},"source_commit":"${GITHUB_SHA}","target_label":"${TARGET_LABEL}"}
