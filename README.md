@@ -20,6 +20,10 @@ and the
 [AO Sentinel component page](https://github.com/uesugitorachiyo/ao-architecture/blob/main/components/ao-sentinel.md)
 for the cross-repository flow.
 
+## Build and run from source
+
+Requires Go 1.22 or later.
+
 ## Product Gate Commands
 
 ```sh
