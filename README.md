@@ -54,7 +54,14 @@ git diff --check
 | `docs/sdd/AO-SENTINEL-SAFETY.md` | Public-safety scanner, forbidden actions, redaction, and fail-closed rules. |
 | `docs/sdd/AO-SENTINEL-IMPLEMENTATION-SLICES.md` | Implementation slices in dependency order. |
 | `docs/sdd/AO-SENTINEL-ACCEPTANCE-GATES.md` | SDD and product 100/100 readiness gates. |
-| `docs/sdd/AO-SENTINEL-SDD-HANDOFF.md` | Handoff prompt for AO Forge, AO Foundry, or Codex. |
+
+## Fixture Workflow
+
+Run the product-gate commands above against the maintained public fixtures.
+They write generated output only under `tmp/`; Sentinel commands emit
+readbacks and holds without live mutation. Live mutation, approval, provider
+use, release, and publication remain outside this public workflow and require
+separate authority.
 
 ## License
 
