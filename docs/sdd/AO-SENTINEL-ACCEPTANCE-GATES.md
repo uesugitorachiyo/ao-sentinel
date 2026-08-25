@@ -1,8 +1,8 @@
 # AO Sentinel Acceptance Gates
 
-## SDD Readiness Gate
+## Public Fixture Workflow Gate
 
-The SDD pack is 100/100 implementation-ready only when:
+The maintained public workflow is complete only when:
 
 - PRD defines users, goals, non-goals, success metrics, and production readiness;
 - architecture defines commands, packages, data flow, storage, and errors;
@@ -10,10 +10,11 @@ The SDD pack is 100/100 implementation-ready only when:
 - monitoring document defines signals, severity, verdicts, holds, and incident semantics;
 - regression document defines suites, baselines, budgets, comparisons, and negative coverage;
 - safety document defines forbidden actions, scans, redaction, and fail-closed rules;
-- implementation slices define exact files, commands, tests, and final verification;
-- handoff prompt needs no additional context;
-- `target/ao-sentinel-plan.json` validates with AO2 SDD validation;
-- placeholder scan finds no incomplete planning markers.
+- implementation slices, schemas, examples, and README commands define the
+  fixture-backed dry-run workflow;
+- README product commands use maintained public fixtures, write generated
+  output only under `tmp/`, and preserve all denied-authority fields; and
+- public documentation contains no stale owner planner or implementation handoff requirement.
 
 ## Product Readiness Gate
 
@@ -50,15 +51,14 @@ AO Sentinel is competitive only when it provides:
 - clean-clone reproducibility;
 - no live mutation in default paths.
 
-## Exit Condition
+## Fixture Workflow Exit
 
-An autonomous implementation run stops when:
+The maintained public workflow passes when:
 
-- every implementation slice is complete;
-- product readiness gate passes from a clean clone;
+- product readiness gate passes from a clean clone against maintained public fixtures;
 - clean fixture emits `verdict=clear`;
 - safety failure fixture emits `verdict=incident`;
 - regression failure fixture emits `verdict=hold`;
 - dry-run watch reports no mutation;
-- public-safety scans pass with zero findings;
-- final response lists verification commands and remaining non-blocking release work.
+- public-safety scans pass with zero findings; and
+- tracked local Markdown links resolve.
